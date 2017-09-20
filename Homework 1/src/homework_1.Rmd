@@ -1,0 +1,144 @@
+---
+title: "Homework 1"
+subtitle: "Stat 597a: Spatial Models"
+author: "Claire Kelling"
+date: "Due September 28, 2017"
+output: pdf_document
+---
+
+# Problem 1:
+\textbf{Suppose we want to simulate a random vector $Y \sim N(\mu, \Sigma)$. If $\Sigma$ is symmetric and positive definite, it can be represented using the Cholesky decomposition
+$\Sigma = LL^{T}$, where L is a lower triangular matrix. Consider the following
+algorithm for simulating Y:}
+\begin{itemize}
+\item \textbf{Calculate the matrix L.}
+\item \textbf{Sample $Z \sim N(0,I)$, where I is the n x n identity matrix.}
+\item \textbf{Let $Y= \mu+LZ$.}
+\end{itemize}
+\textbf{Part a: }
+\textbf{Show that Y generated in this way has the correct distribution. You may use the fact that a linear function of a multivariate normal random variable is again multivariate normal; just show the mean and variance are correct.}
+
+First, I will show the mean of this Y. 
+$$ E(Y) = E(\mu + LZ) = \mu + E(LZ) = \mu+ LE(Z) = \mu + 0 = \mu $$
+Now, I will check the variance of Y. 
+$$ Var(Y) = Var(\mu +LZ) + Var(LZ) = LVar(Z)L^{T} = LIL^{T}=LL^{T}=\Sigma$$
+As stated in the problem, since a linear function of a multivariate normal random variable is also a multivariate normal, since I have verified that the mean and variance are correct, I have shown that Y generated in this way has the correct distribution of $Y\sim N(\mu, \Sigma)$. 
+
+\textbf{Part b: }
+\textbf{Write a function or a few lines of code in R to implement this method for arguments mu and Sigma. You may use the built-in function chol for the Cholesky decomposition and rnorm to generate Z.}
+
+I have included my function in the code shown below. 
+
+```{r multinorm}
+#creating a function with mu and Sigma inputs to generate Y~N(mu,Sigma) using N(0,1)
+multi_norm <- function(mu, Sigma){
+  #I'm including these first few lines of code to make sure that it is positive   
+  #semi-definite
+  #Sigma <- Sigma2
+  chol_mat = chol(Sigma, pivot=TRUE)
+  pivot = attr(chol_mat, "pivot")
+  L = chol_mat[,order(pivot)]
+  set.seed(3)
+  Z = rnorm(nrow(Sigma),0,1)
+  Y = mu + t(L)%*%Z
+}
+
+```
+
+
+## Part c:
+\textbf{For a mean and covariance function of your choosing, use your code from (b) and make a few plots illustrating realizations of a Gaussian process on [0, 1], but changing the different parameters in the model. These differences will be easier to see if you keep the same Z sample but just change mu and Sigma.}
+
+For this problem, I will create 3 realizations of a GP on [0,1] and changing several different parameters in the model. I set the seed in my mulinorm function so that Z does not vary, only mu and Sigma inputs will change. 
+
+For the red line on the bottom, we see that this is an example of a Standard Brownian Bridge on the interval [0,1]. It has the covariance matrix given by $\Sigma_{ij}=min(t_i,t_j)\times(1-max(t_i,t_j))$. It has mean 0. The blue line slightly above this has a mean of 5, which is clearly seen in the plot, and $Sigma=diag(1)$ so there is only variation around 5. For the top line, it has mean 15, which is where it tends to hang around on the left side of the graph but $\Sigma$ is a matrix of all one's, so it doesn't just fluctuate around 5, as with the second line mentioned. 
+
+```{r 1c, echo=FALSE, warning= FALSE}
+
+# Problem 1c
+
+# Defining how many points I want on the interval- 500 equally spaced
+n <- 500
+# I want 3 simulations of a Gaussian Process
+nsim <- 3
+# I want a Gaussian Process on [0,1]
+tmax <- 1
+# Initializing a matrix to store all of the realizations of different Gaussian Processes
+y.mat <- matrix(NA, n+1, nsim)
+# creating a x-vector for the x-axis on the plots, will be used in some of the functions 
+# for the mean and the variance
+x.vec <- (0:n)/n*tmax
+
+#Mean Functions
+mu1 <- rep(5,n+1) 
+mu2 <- rep(0,n+1)
+mu3 <- rep(15,n+1)
+
+#Covariance Functions
+#diagonal covariance
+Sigma1 <- diag(1,n+1)
+# Standard Brownian Bridge Process
+Sigma2 <- matrix(NA,nrow=length(x.vec),ncol=length(x.vec))
+#x.vec <- x.vec[-c(1,501)]
+for(i in 1:length(x.vec)){
+  for(j in 1:length(x.vec)){
+    Sigma2[i,j]=min(x.vec[i],x.vec[j])*(1-max(x.vec[i],x.vec[j]))
+  }
+}
+Sigma3 <- matrix(1, nrow=501,ncol=501)
+
+
+y.mat[,1] <- multi_norm(mu1, Sigma1)
+y.mat[,2] <- multi_norm(mu2, Sigma2)
+y.mat[,3] <- multi_norm(mu3, Sigma3)
+
+matplot(x.vec, y.mat, type = "l", col=c(4,2,3),lwd=2, xlab = "t", ylab = "X(t)", 
+        lty = c(1,3,5), main = "Plot of my 3 realizations of a GP")
+
+```
+
+
+# Problem 2
+\textbf{The file CAtemps.RData contains two R objects of class SpatialPointsDataFrame,
+called CAtemp and CAgrid. CAtemp contains average temperatures from 1961-
+1990 at 200 locations (latitude and longitude) in California in degrees Fahren-
+heit, along with their elevations in meters. CAgrid contains elevations in meters
+over a grid of locations. I've given you some code to get started with this data
+in HW1.R.}
+
+\textbf{Consider the following model for the temperature data. $$Y_i = \mu(s_i;\beta)+e(s_i; \sigma^2, \rho, \tau)$$ where $\mu(s;\beta) = \beta_0 + \beta_1\text{Longitude}(s)+\beta_2\text{Latitude}(s)+\beta_3\text{Elevation}(s) \text{ and } e(s_i; \sigma^2, \rho, \tau)$ is a zero mean stationary Gaussian process with exponential covariance function.}
+
+\textbf{Another way of writing this is as $$ Y_i = \mu(s_i;\beta) + Z(s_i;\sigma^2,\rho) + \epsilon_i $$ where now Z is a mean zero Gaussian process like $e$ but without the nugget term, and the $\epsilon_i \text{ are iid } N(0,\tau^2)$, indepdendent of Z. This is important because we want to predict $\mu(s_i;\beta) + Z(s_i;\sigma^2,\rho)$ \textit{without} the measurement error.}
+
+```{r, include=FALSE}
+load("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 1/data/CAtemps.RData")
+```
+
+
+\textbf{Part a: }
+\textbf{Using the CAtemp data, form a preliminary estimate of $\beta$ using ordinary least squares and make a color plot of the residuals. Include your estimates and plot.}
+
+\textbf{Part b: }
+\textbf{Estimate the variogram nonparametrically and then fit the exponential variogram to it using weighted least squares. Make and include a plot of the nonparametric and parametric variogram functions. Also store your parameter estimates and report them.}
+
+\textbf{Part c: }
+\textbf{We will now form the GLS estimate of $\beta$ by hand, rather than using the gls function. (This function doesn't handle longitude and latitude well, and I also want to give you some practice with matrix calculations in R.)}
+\begin{itemize}
+\item Use the rdist.earth function in fields to create a matrix of distances (in miles) between pairs of locations in CAtemp.
+\item Create the covariance matrix, plugging in your estimates from the fitted variogram. \textit{Hint: Sum two matrices, one without a nugget and one using the diag function to create the matrix $\tau^2I$}.
+\item Invert the covariance matrix and store it for later reference.
+\item Create the X matrix. \textit{Hint: Use cbind.}
+\item Put all the pieces together to form $\hat{\beta}_{GLS}$
+\end{itemize}
+
+\textbf{Part d: }
+\textbf{Calculate and plot the EBLUP of $\mu+Z$ at the locations in CAgrid, plugging in your estimates from (b) and (c). Calculate and plot the (estimated) standard error of Z at each prediction location.}
+
+
+
+
+# Appendix
+
+```{r appendix, ref.label='1c', eval = FALSE}
+```
+
