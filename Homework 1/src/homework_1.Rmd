@@ -5,6 +5,10 @@ author: "Claire Kelling"
 date: "Due September 28, 2017"
 output: pdf_document
 ---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align="center")
+knitr::opts_chunk$set(fig.width=7, fig.height=4) 
+```
 
 # Problem 1:
 \textbf{Suppose we want to simulate a random vector $Y \sim N(\mu, \Sigma)$. If $\Sigma$ is symmetric and positive definite, it can be represented using the Cholesky decomposition
@@ -21,32 +25,35 @@ algorithm for simulating Y:}
 First, I will show the mean of this Y. 
 $$ E(Y) = E(\mu + LZ) = \mu + E(LZ) = \mu+ LE(Z) = \mu + 0 = \mu $$
 Now, I will check the variance of Y. 
-$$ Var(Y) = Var(\mu +LZ) + Var(LZ) = LVar(Z)L^{T} = LIL^{T}=LL^{T}=\Sigma$$
+$$ Var(Y) = Var(\mu +LZ) = Var(LZ) = LVar(Z)L^{T} = LIL^{T}=LL^{T}=\Sigma$$
 As stated in the problem, since a linear function of a multivariate normal random variable is also a multivariate normal, since I have verified that the mean and variance are correct, I have shown that Y generated in this way has the correct distribution of $Y\sim N(\mu, \Sigma)$. 
 
 \textbf{Part b: }
 \textbf{Write a function or a few lines of code in R to implement this method for arguments mu and Sigma. You may use the built-in function chol for the Cholesky decomposition and rnorm to generate Z.}
 
-I have included my function in the code shown below. 
+I have included my function in the code shown below, which is commented to show the steps. 
 
 ```{r multinorm}
 #creating a function with mu and Sigma inputs to generate Y~N(mu,Sigma) using N(0,1)
 multi_norm <- function(mu, Sigma){
-  #I'm including these first few lines of code to make sure that it is positive   
-  #semi-definite
-  #Sigma <- Sigma2
+  # Because Sigma may be positive semidefinite, we need the pivot=TRUE option
+  # and a few more steps to obtain the matrix L for Cholesky decomposition.
   chol_mat = chol(Sigma, pivot=TRUE)
   pivot = attr(chol_mat, "pivot")
   L = chol_mat[,order(pivot)]
+  
+  #Holding Z constant in order to just vary mu and Sigma
   set.seed(3)
+  #generating standard normal
   Z = rnorm(nrow(Sigma),0,1)
+  #generating N(mu,Sigma) through transformation
   Y = mu + t(L)%*%Z
 }
 
 ```
 
 
-## Part c:
+\textbf{Part c:}
 \textbf{For a mean and covariance function of your choosing, use your code from (b) and make a few plots illustrating realizations of a Gaussian process on [0, 1], but changing the different parameters in the model. These differences will be easier to see if you keep the same Z sample but just change mu and Sigma.}
 
 For this problem, I will create 3 realizations of a GP on [0,1] and changing several different parameters in the model. I set the seed in my mulinorm function so that Z does not vary, only mu and Sigma inputs will change. 
@@ -97,6 +104,7 @@ matplot(x.vec, y.mat, type = "l", col=c(4,2,3),lwd=2, xlab = "t", ylab = "X(t)",
 
 ```
 
+\newpage
 
 # Problem 2
 \textbf{The file CAtemps.RData contains two R objects of class SpatialPointsDataFrame,
@@ -110,7 +118,12 @@ in HW1.R.}
 
 \textbf{Another way of writing this is as $$ Y_i = \mu(s_i;\beta) + Z(s_i;\sigma^2,\rho) + \epsilon_i $$ where now Z is a mean zero Gaussian process like $e$ but without the nugget term, and the $\epsilon_i \text{ are iid } N(0,\tau^2)$, indepdendent of Z. This is important because we want to predict $\mu(s_i;\beta) + Z(s_i;\sigma^2,\rho)$ \textit{without} the measurement error.}
 
-```{r exploratory_analysis, include=FALSE}
+Before I begin the problem, I would like to include the plots that were included in the sample code. I included both the temperatures at the observed locations as well as the elevations over the whole grid. 
+
+We see that there is definitely some spatial dependence in time, and latitude, longitude, and elevation all seem to plan an important role, though the linear effect of longitude is less clear. 
+
+```{r exploratory_analysis, echo=FALSE, warning=FALSE,message=FALSE }
+#Problem 2 exploratory analysis
 library(sp)
 library(gstat)
 library(fields)
@@ -130,13 +143,13 @@ ploteqc <- function(spobj, z, breaks, ...){
 
 ## Plotting
 
-range(CAtemp$avgtemp)
+#range(CAtemp$avgtemp)
 breaks <- 40:75
 ploteqc(CAtemp, CAtemp$avgtemp, breaks, pch = 19)
 map("county", region = "california", add = TRUE)
 title(main = "Average Annual Temperatures, 1961-1990, Degrees F")
 
-range(CAgrid$elevation)
+#range(CAgrid$elevation)
 breaks <- seq(-100, 3600, by = 100)
 ploteqc(CAgrid, CAgrid$elevation, breaks, pch = 19)
 map("county", region = "california", add = TRUE)
@@ -146,62 +159,65 @@ title(main = "Elevations at prediction locations, m")
 
 \textbf{Part a: }
 \textbf{Using the CAtemp data, form a preliminary estimate of $\beta$ using ordinary least squares and make a color plot of the residuals. Include your estimates and plot.}
+
+Below, I have included my estimates for $\beta$ through ordinary least squares, as well as a color plot of the residuals. We see that there is some spatial structure to the residuals. According to the summary, also presented below, these covariates seem to have an effect on the temperature.
+
 ```{r 2a, echo=FALSE}
 ##
-#creating preliminary estimate
+# Problem 2a
+# creating preliminary estimate
 ##
-head(CAtemp)
-#I need to convert it to a dataframe to be able to access the lat/lon coordinates
-CAtemp_df <- as.data.frame(CAtemp)
-head(CAtemp_df)
-#fitting the preliminary linear model
-linmod <- lm(avgtemp~elevation + lon + lat, data= CAtemp_df)
-summary(linmod) #ignore standard errors!
-beta_lin <- linmod$coefficients
+#head(CAtemp)
 
+#Fitting the preliminary linear model
+linmod <- lm(avgtemp~lon+lat+elevation, data=CAtemp)
+summary(linmod)
 #storing the residuals so I can plot them
-fitted <- predict(linmod, newdata=CAtemp_df, na.action = na.pass)
-ehat <- CAtemp_df$avgtemp - fitted #residuals
+CAtemp$resid <- linmod$resid
+#storing the coefficients for later
+beta_lin <- linmod$coefficients
+beta_lin
 
-#making the residuals a variable in the dataframe
-CAtemp_df$ehat <- ehat
-CAtemp_df$ehatabs <- abs(ehat)
-coordinates(CAtemp_df) <-  c("lon", "lat") 
-
-range(CAtemp_df$ehat)
+#plotting the residuals
+#range(CAtemp$resid)
 breaks <- seq(-7, 7, by = 0.1)
-ploteqc(CAtemp_df, CAtemp_df$ehat, breaks, pch = 19)
+ploteqc(CAtemp, CAtemp$resid, breaks, pch = 19)
 map("county", region = "california", add = TRUE)
 title(main = "Residuals")
 
-breaks <- seq(0, 7, by = 0.1)
-ploteqc(CAtemp_df, CAtemp_df$ehatabs, breaks, pch = 19)
-map("county", region = "california", add = TRUE)
-title(main = "Absolute Value of the Residuals")
 ```
 
 
 \textbf{Part b: }
 \textbf{Estimate the variogram nonparametrically and then fit the exponential variogram to it using weighted least squares. Make and include a plot of the nonparametric and parametric variogram functions. Also store your parameter estimates and report them.}
-```{r 2b, echo=FALSE}
 
-#converting back to dataframe
-CAtemp_df <- as.data.frame(CAtemp_df)
+Below, we see that the points on the plot represent the nonparametric variogram estimate and the line representes the fitted exponetnial variogram, using weighted least squares. There seems to be some structure to the variogram, and the exponential seems to be a decent fit. 
+
+```{r 2b, echo=FALSE}
+##
+# Problem 2b
+##
+
 
 ##  Nonparametric estimation of the variogram
-vg <- variogram(ehat ~ 1, data = CAtemp_df, width=75)
-plot(vg, xlab = "Distance", ylab = "Semi-variogram estimate", width=5)
+vg <- variogram(resid ~ 1, data = CAtemp)#, width=75)
+#plot(vg, xlab = "Distance", ylab = "Nonparametric Semi-variogram estimate", width=5)
 
 ##  Fitting the variogram parametrically
-fitvg <- fit.variogram(vg, vgm(1, "Exp", 500, 0.05))
+fitvg <- fit.variogram(vg, vgm(1, "Exp", range=200, nugget=1), fit.method = 2)
 print(fitvg)
 s2.hat <- fitvg$psill[2]
 rho.hat <- fitvg$range[2]
 tau2.hat <- fitvg$psill[1]
 
-plot(vg, fitvg, xlab = "Distance", ylab = "Semi-variogram estimate")
+paste("So, my estimate for sigma^2 is", s2.hat, ", my estimate for rho is")
+paste(rho.hat, ", and my estimate for tau is ", tau2.hat, ".")
+
+plot(vg, fitvg, xlab = "Distance", ylab = "Parametric and nonparametric Semi-variogram estimate")
 
 ```
+
+
 
 
 \textbf{Part c: }
@@ -216,17 +232,21 @@ plot(vg, fitvg, xlab = "Distance", ylab = "Semi-variogram estimate")
 
 
 ```{r 2c, echo= FALSE}
-rownames(CAtemp_df) <- c()
+##
+# Problem 2c
+##
+
 # Use the rdist.earth function in fields to create a matrix of distances (in miles) 
 # between pairs of locations in CAtemp.
 #   There are some entries on the diagonal that are not zero, but this is also true
 #   in the case in the documentation, so I won't worry too much about it!
-dist_mat <- rdist.earth(CAtemp_df[,3:4], miles = TRUE)
+d <- rdist.earth(coordinates(CAtemp), miles = TRUE)
 
 # Create the covariance matrix, plugging in your estimates from the fitted variogram.
+# add two matrices together
 mat1 <- diag(tau2.hat, ncol = 200, nrow=200)
 #mat2 <- Matern(dist_mat, scale = s2.hat, range = rho.hat, smoothness = 0.5)
-mat2 <- Exponential(dist_mat, phi=s2.hat, range=rho.hat)
+mat2 <- Exponential(d, phi=s2.hat, range=rho.hat)
 # phi = Marginal variance, Exponential: phi* exp( -d/range)
 cov <- mat1+mat2
 
@@ -235,29 +255,34 @@ cov <- mat1+mat2
 Sinv <- solve(cov)
 
 # Create the X matrix. Hint: Use cbind.
-X <- cbind(rep(1,nrow(CAtemp_df)), CAtemp_df[,2:4])
-
-
+n <- nrow(CAtemp)
+m <- nrow(CAgrid)
+X <- cbind(rep(1,n), CAtemp$lon, CAtemp$lat, CAtemp$elevation)
 
 
 ```
 
 We know that $\hat{\beta}_{GLS} = (X^{T}\hat{\Sigma}^{-1}X)^{-1}X^{T}\hat{\Sigma}^{-1}Y$.
 
-```{r 2c2}
+I have included my estimates for $\hat{\beta}_{GLS}$ below. 
+
+```{r 2c2, echo=FALSE}
 # Put all the pieces together to form $\hat{\beta}_{GLS}$
 
-Y <- CAtemp_df$avgtemp
+Y <- CAtemp$avgtemp
 X <- as.matrix(X)
 first <- t(X)%*%Sinv%*%X
 second <- t(X)%*%Sinv%*%Y
 beta_gls <- solve(first)%*%second
 
-#changed pretty drastically?
-beta_gls
+# include estimates below
+rownames(beta_gls) <- c("Intercept", "lon", "lat", "elevation")
+t(beta_gls)
+
+```
+These estimates seem to be fairly close to the estimates from the linear model, included below for reference. 
+```{r, echo=FALSE}
 beta_lin
-
-
 ```
 
 
@@ -268,51 +293,70 @@ After we've estimated $\beta \text{ and } \theta$, we can apply the kriging pred
 $$\hat{Y}(s_0)= X^{T}\hat{\beta}_{GLS}+\gamma^{T}\Sigma^{-1}(Y-X^{T}\hat{\beta}_{GLS}) $$
 As shown in the class notes, this gives us the EBLUP and a naive estimate of our prediction error. 
 
+We have also included the estimated standard error of Z at each prediction location, where $$ Var[\hat{Y}(s_0)-Y(s_0)] = \sigma^2 - \gamma^{T}\Sigma^{-1}\gamma +b^{T}(X^{T}\Sigma^{-1}X)^{-1}b $$ and where $b= x_0-X^{T}\Sigma^{-1}\gamma$.
+
+We see that the estimate for the mean temperature is lowest in the mountains and highest in the south, where there are deserts. It is also relatively high in the valley "where all of our vegetables are grown."
+
+
+We also see that the standard error ($se = \sqrt(variance)$) also has some spatial dependence. In the last image, I have included the observation points on the image. We see that the variance is the highest where we don't have observation points, especially on the lower east side of California.
+
+
+
 ```{r 2d, echo=FALSE}
-n <- nrow(CAtemp_df)
+##
+# Problem 2d
+##
 
-d <- as.matrix(dist(coordinates(CAgrid)))
-Sigma <- matrix(0,nrow=nrow(d), ncol=ncol(d))
-diag(Sigma) <- s2.hat + tau2.hat
-index <- d > 0 & d <= rho.hat
-Sigma[index] <- s2.hat * (1 - 3/2*d[index]/rho.hat + 1/2*(d[index]/rho.hat)^3)
+dcross <- rdist.earth(coordinates(CAtemp), coordinates(CAgrid))
+dpred <- rdist.earth(coordinates(CAgrid))
+Xpred <- cbind(rep(1,m), CAgrid$lon, CAgrid$lat, CAgrid$elevation)
 
-# Now cross-covariances, note no nugget
-dcross <- rdist(coordinates(meuse), coordinates(meuse.grid))
-Sigmacross <- s2.hat * s2.hat * (1 - 3/2*dcross/rho.hat + 1/2*(dcross/rho.hat)^3)
-Sigmacross[dcross > rho.hat] <- 0
+#Construct the covariance matrixes
+Gamma <- exp(-d/rho.hat)
+Ginv <- solve(Gamma)
+g <- exp(-dcross/rho.hat)
+Gpred <- exp(-dpred/rho.hat)
 
-
-# Other components
-X <- matrix(1, nrow = nrow(meuse))
-Xpred <- matrix(1, nrow = nrow(meuse.grid))
-
-b <- t(Xpred) - t(X) %*% solve(Sigma, Sigmacross)
-
-# Kriging equations!
-ypred <- Xpred %*% beta.hat + t(Sigmacross) %*% 
-  solve(Sigma, meuse$logzinc - X %*% beta.hat)
-vpred <- s2.hat - diag(t(Sigmacross) %*% solve(Sigma, Sigmacross) + t(b) %*% solve(t(X) %*% solve(Sigma, X), b))
-sepred <- sqrt(vpred)
-
+#Kriging equations: mean 
+y_pred <- Xpred%*%beta_gls + t(g)%*%Ginv%*%(Y-X%*%beta_gls)
 # Plot
+#range(y_pred)
+breaks <- seq(30, 80, by = 5)
+ploteqc(CAgrid, y_pred, breaks, pch = 19)
+map("county", region = "california", add = TRUE)
+title(main = "Predicted Temperatures")
 
-source("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 1/src/shaby_point_ref_function.R")
+#Kriging equations: standard error
+#as in CA temp notes
+v_pred <- s2.hat*(Gpred - t(g)%*%Ginv%*%g)
 
-plot.point.ref(meuse.grid, ypred)
-points(coordinates(meuse), pch=4, cex=2)
+#as in lecture 4 notes
+b <- t(Xpred) - t(X) %*% Ginv%*%g
+v_pred <- s2.hat-diag(t(g)%*%Ginv%*%g+t(b)%*%solve(t(X)%*%Ginv%*%X)%*%b)
+se_pred <- sqrt(v_pred)
 
-plot.point.ref(meuse.grid, sepred)
-points(coordinates(meuse), pch=4, cex=2)
+
+#range(se_pred)
+breaks <- seq(1.9, 2.1, by = 0.01)
+ploteqc(CAgrid, se_pred, breaks, pch = 19)
+map("county", region = "california", add = TRUE)
+title(main = "Standard Error")
+
+breaks <- seq(1.9, 2.1, by = 0.01)
+ploteqc(CAgrid, se_pred, breaks, pch = 19)
+map("county", region = "california", add = TRUE)
+title(main = "Standard Error with Observed Points")
+points(CAtemp)
+
 
 
 ```
 
 
-
-
-
+\newpage
 # Appendix
+
+I have included my code to all of the problems below. 
 
 ```{r appendix, ref.label='1c', eval = FALSE}
 ```
@@ -323,6 +367,8 @@ points(coordinates(meuse), pch=4, cex=2)
 ```{r appendix4, ref.label='2b', eval = FALSE}
 ```
 ```{r appendix5, ref.label='2c', eval = FALSE}
+```
+```{r appendix5, ref.label='2c2', eval = FALSE}
 ```
 ```{r appendix6, ref.label='2d', eval = FALSE}
 ```
