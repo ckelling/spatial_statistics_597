@@ -110,16 +110,99 @@ in HW1.R.}
 
 \textbf{Another way of writing this is as $$ Y_i = \mu(s_i;\beta) + Z(s_i;\sigma^2,\rho) + \epsilon_i $$ where now Z is a mean zero Gaussian process like $e$ but without the nugget term, and the $\epsilon_i \text{ are iid } N(0,\tau^2)$, indepdendent of Z. This is important because we want to predict $\mu(s_i;\beta) + Z(s_i;\sigma^2,\rho)$ \textit{without} the measurement error.}
 
-```{r, include=FALSE}
+```{r exploratory_analysis, include=FALSE}
+library(sp)
+library(gstat)
+library(fields)
+library(classInt)
+library(maps)
+
 load("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 1/data/CAtemps.RData")
+
+ploteqc <- function(spobj, z, breaks, ...){
+  pal <- tim.colors(length(breaks)-1)
+  fb <- classIntervals(z, n = length(pal), 
+                       style = "fixed", fixedBreaks = breaks)
+  col <- findColours(fb, pal)
+  plot(spobj, col = col, ...)
+  image.plot(legend.only = TRUE, zlim = range(breaks), col = pal)
+}
+
+## Plotting
+
+range(CAtemp$avgtemp)
+breaks <- 40:75
+x11()
+ploteqc(CAtemp, CAtemp$avgtemp, breaks, pch = 19)
+map("county", region = "california", add = TRUE)
+title(main = "Average Annual Temperatures, 1961-1990, Degrees F")
+
+range(CAgrid$elevation)
+breaks <- seq(-100, 3600, by = 100)
+ploteqc(CAgrid, CAgrid$elevation, breaks, pch = 19)
+map("county", region = "california", add = TRUE)
+title(main = "Elevations at prediction locations, m")
 ```
 
 
 \textbf{Part a: }
 \textbf{Using the CAtemp data, form a preliminary estimate of $\beta$ using ordinary least squares and make a color plot of the residuals. Include your estimates and plot.}
+```{r 2a, echo=FALSE}
+##
+#creating preliminary estimate
+##
+head(CAtemp)
+#I need to convert it to a dataframe to be able to access the lat/lon coordinates
+CAtemp_df <- as.data.frame(CAtemp)
+head(CAtemp_df)
+#fitting the preliminary linear model
+linmod <- lm(avgtemp~elevation + lon + lat, data= CAtemp_df)
+summary(linmod) #ignore standard errors!
+
+#storing the residuals so I can plot them
+fitted <- predict(linmod, newdata=CAtemp_df, na.action = na.pass)
+ehat <- CAtemp_df$avgtemp - fitted #residuals
+
+#making the residuals a variable in the dataframe
+CAtemp_df$ehat <- ehat
+CAtemp_df$ehatabs <- abs(ehat)
+coordinates(CAtemp_df) <-  c("lon", "lat") 
+
+range(CAtemp_df$ehat)
+breaks <- seq(-7, 7, by = 0.1)
+ploteqc(CAtemp_df, CAtemp_df$ehat, breaks, pch = 19)
+map("county", region = "california", add = TRUE)
+title(main = "Residuals")
+
+breaks <- seq(0, 7, by = 0.1)
+ploteqc(CAtemp_df, CAtemp_df$ehatabs, breaks, pch = 19)
+map("county", region = "california", add = TRUE)
+title(main = "Absolute Value of the Residuals")
+```
+
 
 \textbf{Part b: }
 \textbf{Estimate the variogram nonparametrically and then fit the exponential variogram to it using weighted least squares. Make and include a plot of the nonparametric and parametric variogram functions. Also store your parameter estimates and report them.}
+```{r 2b, echo=FALSE}
+
+#converting back to dataframe
+CAtemp_df <- as.data.frame(CAtemp_df)
+
+##  Nonparametric estimation of the variogram
+vg <- variogram(ehat ~ 1, data = CAtemp_df, width=75)
+plot(vg, xlab = "Distance", ylab = "Semi-variogram estimate", width=5)
+
+##  Fitting the variogram parametrically
+fitvg <- fit.variogram(vg, vgm(1, "Exp", 500, 0.05))
+print(fitvg)
+s2.hat <- fitvg$psill[2]
+rho.hat <- fitvg$range[2]
+tau2.hat <- fitvg$psill[1]
+
+plot(vg, fitvg, xlab = "Distance", ylab = "Semi-variogram estimate")
+
+```
+
 
 \textbf{Part c: }
 \textbf{We will now form the GLS estimate of $\beta$ by hand, rather than using the gls function. (This function doesn't handle longitude and latitude well, and I also want to give you some practice with matrix calculations in R.)}
@@ -131,8 +214,38 @@ load("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Ho
 \item Put all the pieces together to form $\hat{\beta}_{GLS}$
 \end{itemize}
 
+```{r 2c, echo= FALSE}
+rownames(CAtemp_df) <- c()
+# Use the rdist.earth function in fields to create a matrix of distances (in miles) 
+# between pairs of locations in CAtemp.
+#   There are some entries on the diagonal that are not zero, but this is also true
+#   in the case in the documentation, so I won't worry too much about it!
+dist_mat <- rdist.earth(CAtemp_df[,3:4], miles = TRUE)
+
+# Create the covariance matrix, plugging in your estimates from the fitted variogram.
+mat1 <- diag(tau2.hat, ncol = 200, nrow=200)
+#mat2 <- Matern(dist_mat, scale = s2.hat, range = rho.hat, smoothness = 0.5)
+mat2 <- Exponential(dist_mat, phi=s2.hat, range=rho.hat)
+# phi = Marginal variance, Exponential: phi* exp( -d/range)
+cov <- mat1+mat2
+
+
+# Invert the covariance matrix and store it for later reference.
+inv <- solve(cov)
+
+# Create the X matrix. Hint: Use cbind.
+X <- cbind(rep(1,nrow(CAtemp_df)), CAtemp_df[,2:4])
+
+
+```
+
+
 \textbf{Part d: }
 \textbf{Calculate and plot the EBLUP of $\mu+Z$ at the locations in CAgrid, plugging in your estimates from (b) and (c). Calculate and plot the (estimated) standard error of Z at each prediction location.}
+```{r 2d, echo=FALSE}
+
+```
+
 
 
 
@@ -141,4 +254,13 @@ load("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Ho
 
 ```{r appendix, ref.label='1c', eval = FALSE}
 ```
-
+```{r appendix2, ref.label='exploratory_analysis', eval = FALSE}
+```
+```{r appendix3, ref.label='2a', eval = FALSE}
+```
+```{r appendix4, ref.label='2b', eval = FALSE}
+```
+```{r appendix5, ref.label='2c', eval = FALSE}
+```
+```{r appendix6, ref.label='2d', eval = FALSE}
+```
