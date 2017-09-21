@@ -132,7 +132,6 @@ ploteqc <- function(spobj, z, breaks, ...){
 
 range(CAtemp$avgtemp)
 breaks <- 40:75
-x11()
 ploteqc(CAtemp, CAtemp$avgtemp, breaks, pch = 19)
 map("county", region = "california", add = TRUE)
 title(main = "Average Annual Temperatures, 1961-1990, Degrees F")
@@ -158,6 +157,7 @@ head(CAtemp_df)
 #fitting the preliminary linear model
 linmod <- lm(avgtemp~elevation + lon + lat, data= CAtemp_df)
 summary(linmod) #ignore standard errors!
+beta_lin <- linmod$coefficients
 
 #storing the residuals so I can plot them
 fitted <- predict(linmod, newdata=CAtemp_df, na.action = na.pass)
@@ -214,6 +214,7 @@ plot(vg, fitvg, xlab = "Distance", ylab = "Semi-variogram estimate")
 \item Put all the pieces together to form $\hat{\beta}_{GLS}$
 \end{itemize}
 
+
 ```{r 2c, echo= FALSE}
 rownames(CAtemp_df) <- c()
 # Use the rdist.earth function in fields to create a matrix of distances (in miles) 
@@ -231,10 +232,30 @@ cov <- mat1+mat2
 
 
 # Invert the covariance matrix and store it for later reference.
-inv <- solve(cov)
+Sinv <- solve(cov)
 
 # Create the X matrix. Hint: Use cbind.
 X <- cbind(rep(1,nrow(CAtemp_df)), CAtemp_df[,2:4])
+
+
+
+
+```
+
+We know that $\hat{\beta}_{GLS} = (X^{T}\hat{\Sigma}^{-1}X)^{-1}X^{T}\hat{\Sigma}^{-1}Y$.
+
+```{r 2c2}
+# Put all the pieces together to form $\hat{\beta}_{GLS}$
+
+Y <- CAtemp_df$avgtemp
+X <- as.matrix(X)
+first <- t(X)%*%Sinv%*%X
+second <- t(X)%*%Sinv%*%Y
+beta_gls <- solve(first)%*%second
+
+#changed pretty drastically?
+beta_gls
+beta_lin
 
 
 ```
@@ -242,7 +263,48 @@ X <- cbind(rep(1,nrow(CAtemp_df)), CAtemp_df[,2:4])
 
 \textbf{Part d: }
 \textbf{Calculate and plot the EBLUP of $\mu+Z$ at the locations in CAgrid, plugging in your estimates from (b) and (c). Calculate and plot the (estimated) standard error of Z at each prediction location.}
+
+After we've estimated $\beta \text{ and } \theta$, we can apply the kriging predictor:
+$$\hat{Y}(s_0)= X^{T}\hat{\beta}_{GLS}+\gamma^{T}\Sigma^{-1}(Y-X^{T}\hat{\beta}_{GLS}) $$
+As shown in the class notes, this gives us the EBLUP and a naive estimate of our prediction error. 
+
 ```{r 2d, echo=FALSE}
+n <- nrow(CAtemp_df)
+
+d <- as.matrix(dist(coordinates(CAgrid)))
+Sigma <- matrix(0,nrow=nrow(d), ncol=ncol(d))
+diag(Sigma) <- s2.hat + tau2.hat
+index <- d > 0 & d <= rho.hat
+Sigma[index] <- s2.hat * (1 - 3/2*d[index]/rho.hat + 1/2*(d[index]/rho.hat)^3)
+
+# Now cross-covariances, note no nugget
+dcross <- rdist(coordinates(meuse), coordinates(meuse.grid))
+Sigmacross <- s2.hat * s2.hat * (1 - 3/2*dcross/rho.hat + 1/2*(dcross/rho.hat)^3)
+Sigmacross[dcross > rho.hat] <- 0
+
+
+# Other components
+X <- matrix(1, nrow = nrow(meuse))
+Xpred <- matrix(1, nrow = nrow(meuse.grid))
+
+b <- t(Xpred) - t(X) %*% solve(Sigma, Sigmacross)
+
+# Kriging equations!
+ypred <- Xpred %*% beta.hat + t(Sigmacross) %*% 
+  solve(Sigma, meuse$logzinc - X %*% beta.hat)
+vpred <- s2.hat - diag(t(Sigmacross) %*% solve(Sigma, Sigmacross) + t(b) %*% solve(t(X) %*% solve(Sigma, X), b))
+sepred <- sqrt(vpred)
+
+# Plot
+
+source("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 1/src/shaby_point_ref_function.R")
+
+plot.point.ref(meuse.grid, ypred)
+points(coordinates(meuse), pch=4, cex=2)
+
+plot.point.ref(meuse.grid, sepred)
+points(coordinates(meuse), pch=4, cex=2)
+
 
 ```
 
