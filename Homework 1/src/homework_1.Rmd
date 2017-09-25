@@ -26,7 +26,7 @@ First, I will show the mean of this Y.
 $$ E(Y) = E(\mu + LZ) = \mu + E(LZ) = \mu+ LE(Z) = \mu + 0 = \mu $$
 Now, I will check the variance of Y. 
 $$ Var(Y) = Var(\mu +LZ) = Var(LZ) = LVar(Z)L^{T} = LIL^{T}=LL^{T}=\Sigma$$
-As stated in the problem, since a linear function of a multivariate normal random variable is also a multivariate normal, since I have verified that the mean and variance are correct, I have shown that Y generated in this way has the correct distribution of $Y\sim N(\mu, \Sigma)$. 
+As stated in the problem, since a linear function of a multivariate normal random variable is also a multivariate normal, and since I have verified that the mean and variance are correct, I have shown that Y generated in this way has the correct distribution of $Y\sim N(\mu, \Sigma)$. 
 
 \textbf{Part b: }
 \textbf{Write a function or a few lines of code in R to implement this method for arguments mu and Sigma. You may use the built-in function chol for the Cholesky decomposition and rnorm to generate Z.}
@@ -58,7 +58,7 @@ multi_norm <- function(mu, Sigma){
 
 For this problem, I will create 3 realizations of a GP on [0,1] and changing several different parameters in the model. I set the seed in my mulinorm function so that Z does not vary, only mu and Sigma inputs will change. 
 
-For the red line on the bottom, we see that this is an example of a Standard Brownian Bridge on the interval [0,1]. It has the covariance matrix given by $\Sigma_{ij}=min(t_i,t_j)\times(1-max(t_i,t_j))$. It has mean 0. The blue line slightly above this has a mean of 5, which is clearly seen in the plot, and $Sigma=diag(1)$ so there is only variation around 5. For the top line, it has mean 15, which is where it tends to hang around on the left side of the graph but $\Sigma$ is a matrix of all one's, so it doesn't just fluctuate around 5, as with the second line mentioned. 
+For the red line on the bottom, we see that this is an example of a Standard Brownian Bridge on the interval [0,1]. It has the covariance matrix given by $\Sigma_{ij}=min(t_i,t_j)\times(1-max(t_i,t_j))$. It has mean 0. The blue line slightly above this has a mean of 5, which is clearly seen in the plot, and $Sigma=diag(1)$ so there is only variation around the mean of 5. For the top process, it has mean 15, which is where it tends to hang around on the left side of the graph but $\Sigma$ is a matrix of all one's (so without independence), so it doesn't just fluctuate around the mean, as with the second line mentioned. 
 
 ```{r 1c, echo=FALSE, warning= FALSE}
 
@@ -191,7 +191,7 @@ title(main = "Residuals")
 \textbf{Part b: }
 \textbf{Estimate the variogram nonparametrically and then fit the exponential variogram to it using weighted least squares. Make and include a plot of the nonparametric and parametric variogram functions. Also store your parameter estimates and report them.}
 
-Below, we see that the points on the plot represent the nonparametric variogram estimate and the line representes the fitted exponetnial variogram, using weighted least squares. There seems to be some structure to the variogram, and the exponential seems to be a decent fit. 
+Below, we see that the points on the plot represent the nonparametric variogram estimate and the line representes the fitted exponetnial variogram, using weighted least squares. There seems to be some structure to the variogram, and the exponential seems to be a decent fit. I have also included my parameter estimates below. 
 
 ```{r 2b, echo=FALSE}
 ##
@@ -298,7 +298,7 @@ We have also included the estimated standard error of Z at each prediction locat
 We see that the estimate for the mean temperature is lowest in the mountains and highest in the south, where there are deserts. It is also relatively high in the valley "where all of our vegetables are grown."
 
 
-We also see that the standard error ($se = \sqrt(variance)$) also has some spatial dependence. In the last image, I have included the observation points on the image. We see that the variance is the highest where we don't have observation points, especially on the lower east side of California.
+We also see that the standard error ($se = \sqrt(variance)$) also has some spatial dependence. In the last image, I have included the observation points on the image. We see that the standard errors is the highest where we don't have observation points, especially on the lower east side of California.
 
 
 
