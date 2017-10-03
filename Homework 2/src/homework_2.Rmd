@@ -1,0 +1,114 @@
+---
+title: "Homework 1"
+subtitle: "Stat 597a: Spatial Models"
+author: "Claire Kelling"
+date: "Due September 28, 2017"
+output: pdf_document
+---
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(fig.align="center")
+knitr::opts_chunk$set(fig.width=7, fig.height=4)
+library(geoRglm)
+```
+
+# Problem 1: 
+\textbf{First, read over this section. There is one key change we will make compared to Wikle's analysis, which is that I have rst transformed the coordinates from longitude and latitude to UTM coordinates. This is because the geoRglm package only uses Euclidean distances. Using it with longitude and latitude will not give accurate distances between the points. Another way we could do it, if we were coding this from scratch, would be to keep longitude and latitude, but work with great circle distances when calculating the distance matrix.
+
+Given this new coordinate system, the prior for the range parameter $\phi$ that we'll use is a discrete uniform distribution from 500 to 300,000, in increments of 500. The reasons for the discrete prior are again due to the constraints of the geoRglm package.
+
+With this change, write down the three layers of the hierarchical model as defined on slide 8 of Lecture 8. That is, what distributions make up the data model, process model, and prior model?}
+
+
+
+#Problem 2
+\textbf{Transform the original observations using $Z_i = log(Y_i)$ and use classical geostatistical techniques to get preliminary estimates of $\sigma^2$ and $\phi$ by treating the $Z_i$ as normally distributed given $\eta$ (i.e. fit a model with a nugget, and extract
+just the estimates for $\sigma^2$ and $\phi$ ).}
+```{r 2, echo=FALSE, warning=FALSE,message=FALSE}
+##
+#Problem 2
+##
+
+load("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 2/data/dove.RData")
+dove$z <- log(dove$counts)
+
+```
+
+
+
+#Problem 3
+\textbf{Use model.glm.control, prior.glm.control, mcmc.control, and pois.krige.bayes to run an initial MCMC chain, fixing $\phi$ at your estimate from (1). The goal here is to experiment with changing S.scale to achieve an acceptance rate of about 60% for the process samples, which is optimal for the algorithm pois.krige.bayes is using to sample the vector of process values.}
+
+
+\textbf{The choice of niter = 100000 and thin = 10 is just to keep things manageable at this stage. We will eventually run a much longer chain. I suggest you always keep burn.in = 0 and then discard the initial samples yourself after seeing the results.}
+
+
+```{r 3, echo=FALSE, warning=FALSE,message=FALSE}
+##
+#Problem 3
+##
+
+
+#sim.model <- model.glm.control(cov.model = ??, kappa = ??)
+#sim.prior <- prior.glm.control(phi.prior = ??, phi = ??)
+#sim.mcmc <- mcmc.control(S.scale = ??, Htrunc = "default",
+#S.start = "random",
+#burn.in = 0, thin = 10, n.iter = 100000)
+#sim.posterior <- pois.krige.bayes(??,
+#model=sim.model, prior=sim.prior,
+#mcmc.input=sim.mcmc)
+```
+
+
+#Problem 4
+\textbf{Now duplicate and modify the code from (3) to include sampling $phi$. Experiment with changing S.scale and phi.scale to get acceptance rates of about 60% and 25%, respectively. (Note: I found the acceptance rates fluctuated over the course of my chain. Just aim to get in the right ballpark.) I suggest you also take thin = 100 and n.iter = 100000 here. Make trace plots and ACF plots of the parameters $\sigma^2, \phi, \text{ and } \beta$. You will likely see a LOT of autocorrelation.}
+
+```{r 4, echo=FALSE, warning=FALSE,message=FALSE}
+
+##
+#Problem 4
+##
+
+```
+
+
+### Problem 5
+\textbf{There is not much beyond changing S.scale and phi.scale that we can do to reduce the autocorrelation. So we will run a long chain and subsample it. Run the same code as in part (4), increasing to thin = 1e4 and n.iter = 1e7. Now do the following with your sampled parameters.}
+\begin{itemize}
+\item \textbf{Make trace plots and ACF plots. Choose a burn-in to discard and make them again.}
+\item \textbf{Calculate the effective sample size you have for each parameter. If they are not at least 100 for each parameter, go back and run a longer chain.}
+\item \textbf{Plot the marginal posterior distributions for each parameter using histograms and/or kernel density estimators.}
+\end{itemize}
+
+```{r 5, echo=FALSE, warning=FALSE,message=FALSE}
+##
+#Problem 5
+##
+
+
+```
+
+
+
+### Problem 6
+\textbf{Do one final run of the chain, the same as in (5), but this time specifying the burn-in value you chose in (5) and also modifying the code to include prediction at the locations in dove.grid. Create two color or grayscale plots, showing the posterior mean and standard deviation for the underlying mean surface (exp $\eta$) at each location in dove.grid.}
+
+```{r 6, echo=FALSE, warning=FALSE,message=FALSE}
+##
+#Problem 6
+##
+
+```
+
+
+\begin{comment}
+```{r appendix, ref.label='2', eval = FALSE}
+```
+```{r appendix2, ref.label='3', eval = FALSE}
+```
+```{r appendix3, ref.label='4', eval = FALSE}
+```
+```{r appendix4, ref.label='5', eval = FALSE}
+```
+```{r appendix5, ref.label='6', eval = FALSE}
+```
+\end{comment}
