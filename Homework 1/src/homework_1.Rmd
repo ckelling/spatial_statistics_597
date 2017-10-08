@@ -116,7 +116,7 @@ in HW1.R.}
 
 \textbf{Consider the following model for the temperature data. $$Y_i = \mu(s_i;\beta)+e(s_i; \sigma^2, \rho, \tau)$$ where $\mu(s;\beta) = \beta_0 + \beta_1\text{Longitude}(s)+\beta_2\text{Latitude}(s)+\beta_3\text{Elevation}(s) \text{ and } e(s_i; \sigma^2, \rho, \tau)$ is a zero mean stationary Gaussian process with exponential covariance function.}
 
-\textbf{Another way of writing this is as $$ Y_i = \mu(s_i;\beta) + Z(s_i;\sigma^2,\rho) + \epsilon_i $$ where now Z is a mean zero Gaussian process like $e$ but without the nugget term, and the $\epsilon_i \text{ are iid } N(0,\tau^2)$, indepdendent of Z. This is important because we want to predict $\mu(s_i;\beta) + Z(s_i;\sigma^2,\rho)$ \textit{without} the measurement error.}
+\textbf{Another way of writing this is as $$ Y_i = \mu(s_i;\beta) + Z(s_i;\sigma^2,\rho) + \epsilon_i $$ where now Z is a mean zero Gaussian process like $e$ but without the nugget term, and the $\epsilon_i \text{ are iid } N(0,\tau^2)$, independent of Z. This is important because we want to predict $\mu(s_i;\beta) + Z(s_i;\sigma^2,\rho)$ \textit{without} the measurement error.}
 
 Before I begin the problem, I would like to include the plots that were included in the sample code. I included both the temperatures at the observed locations as well as the elevations over the whole grid. 
 
@@ -201,6 +201,7 @@ Below, we see that the points on the plot represent the nonparametric variogram 
 
 ##  Nonparametric estimation of the variogram
 vg <- variogram(resid ~ 1, data = CAtemp)#, width=75)
+print(vg)
 #plot(vg, xlab = "Distance", ylab = "Nonparametric Semi-variogram estimate", width=5)
 
 ##  Fitting the variogram parametrically
