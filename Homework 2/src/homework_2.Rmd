@@ -15,6 +15,7 @@ library(fields)
 library(classInt)
 library(maps)
 library(mcmcse)
+
 ```
 
 # Problem 1: 
