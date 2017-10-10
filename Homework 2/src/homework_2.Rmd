@@ -15,6 +15,7 @@ library(fields)
 library(classInt)
 library(maps)
 library(mcmcse)
+set.seed(123)
 
 ```
 
@@ -30,19 +31,19 @@ From the lecture, we know there are going to be 3 components to our model: the d
 According to the textbook, Hierarchical Model with Spatial Data, we will model this data according to the genearlized linear spatial modeling framework. 
 
 So, the data model is as follows: 
-$$ f(\textbf{Y}|\lambda(s_i), \phi) \sim Poisson(\lambda(s_i))$$
+$$ f(Y(s_i)|\lambda(s_i), \phi) \sim \text{ independent } Poisson(\lambda(s_i)), i = 1,...,m$$
 where we employ a Gaussian spatial process model to describe the spatial variation in $\lambda(s_i)$ and use the canonical log-link function. So, $log(\lambda(s_i)) = \beta + \eta(s_i)$ where $\eta(s_i)$ is a Guassian process with mean 0, variance $\sigma^2_n$ and correlation function $r(s_i,s_j;\phi)$. Specifically, $r_\eta(s_i, s_j; \phi) = exp(-||s_i-s_j||/\phi)$. We were told in the problem statement that $\phi$ followes a discrete uniform distribution from 500 to 300,000, in increments of 500. Therefore, the process model is as follows:
 $$log(\lambda(s_i)) = \beta + \eta(s_i) \text{ where} $$
 $$ f(\eta(s_i) | \phi) \sim   \text{GP}(mean = 0, \text{variance} = \sigma^2_n,  \text{correlation function} =r_\eta(s_i, s_j; \phi) = exp(-||s_i-s_j||/\phi)$$
 and the parameter model is as follows:
-$$ \pi(\phi) \sim Uniform(500, \text{300,000}) \text{ with breaks as described above.} $$
+$$ \pi(\phi) \sim Uniform(500, \text{300,000}) \text{ with breaks as described above.} $$ Also, the parameter model for $\beta$ is flat, so $\pi(\beta) \propto 1$ and $\sigma^2$ has a uniform prior, according to the book.
 
-
+\newpage
 
 #Problem 2
 \textbf{Transform the original observations using $Z_i = log(Y_i)$ and use classical geostatistical techniques to get preliminary estimates of $\sigma^2$ and $\phi$ by treating the $Z_i$ as normally distributed given $\eta$ (i.e. fit a model with a nugget, and extract
 just the estimates for $\sigma^2$ and $\phi$ ).}
-```{r 2, echo=FALSE, warning=FALSE,message=FALSE}
+```{r 2, echo=FALSE, warning=FALSE,message=FALSE, include = FALSE}
 ##
 #Problem 2
 ##
@@ -51,41 +52,42 @@ just the estimates for $\sigma^2$ and $\phi$ ).}
 load("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 2/data/dove.RData")
 
 #transform the original observations
-dove$z <- log(dove$counts)
+dove$counts <- log(dove$counts)
 
 #use classical geostatistical techniques to get preliminary estimates of $\sigma^2$ and $\phi$
 
 #Fitting the preliminary linear model
-linmod <- lm(z~coords.x1+coords.x2, data=dove)
+linmod <- lm(counts~coords.x1+coords.x2, data=dove)
 #linmod <- lm(z~1, data=dove)
 summary(linmod)
 #storing the residuals so I can plot them
 dove$resid <- linmod$resid
-View(as.data.frame(dove))
 
 ##  Nonparametric estimation of the variogram
 vg <- variogram(resid ~ 1, data = dove)#, width=75)
-print(vg)
-plot(vg, xlab = "Distance", ylab = "Nonparametric Semi-variogram estimate", width=5)
+#print(vg)
+plot(vg, xlab = "Distance", ylab = "Nonparametric Semi-variogram estimate", width=5, main = "Exponential Variogram Fit")
 
 ##  Fitting the variogram parametrically
-##  range in this case is the number of datapoints, according to lecture code
-nrow(dove)
-##  nugget =1 includes a nugget term in the model
 # fitvg <- fit.variogram(vg, vgm(1, "Exp", range=47, nugget=1), fit.method = 2)
 # print(fitvg)
 # fitvg.2 <- fit.variogram(vg, vgm(1, "Exp", 47, 0.05))
 # print(fitvg.2)
 fitvg.3 <- fit.variogram(vg, vgm("Exp"))
 print(fitvg.3)
-plot(vg, fitvg.3, xlab = "Distance", ylab = "Semi-variogram estimate", layout=c(2,1))
 
 s2.hat <- fitvg.3$psill[2]
 phi.hat <- fitvg.3$range[2]
 tau2.hat <- fitvg.3$psill[1]
 
 ```
+ 
+We have our estimates of $\sigma^2$ as 0.06637062 and our estimate of $\phi$ to be 91436.2. 
+```{r}
+plot(vg, fitvg.3, xlab = "Distance", ylab = "Semi-variogram estimate", layout=c(2,1), main = "Exponential Variogram Fit")
+```
 
+Above, we have also included the fitted exponential variogram, which seems like a pretty good fit of our data. Therefore, we will proceed into the MCMC.
 
 
 #Problem 3
@@ -104,8 +106,10 @@ dove_mcmc <- as.geodata(dove)
 #run an initial MCMC chain, fixing phi at your estimate from
 #achieve an acceptance rate of about 60% for the process samples
 sim.model <- model.glm.control(cov.model= "exponential")#, kappa = NA, not required for exponential
+#0.017
+set.seed(132)
 sim.prior <- prior.glm.control(phi.prior = "fixed", phi = phi.hat)
-sim.mcmc <- mcmc.control(S.scale = 0.017, Htrunc = "default", S.start = "random", 
+sim.mcmc <- mcmc.control(S.scale = 0.0098, Htrunc = "default", S.start = "random", 
                          burn.in = 0, thin = 10, n.iter = 100000)
 sim.posterior <- pois.krige.bayes(dove_mcmc, model=sim.model, prior=sim.prior, 
                                     mcmc.input=sim.mcmc)#, keep.mcmc.sim=TRUE)
@@ -113,20 +117,22 @@ sim.posterior <- pois.krige.bayes(dove_mcmc, model=sim.model, prior=sim.prior,
 nrow(sim.posterior$posterior$acc.rate)
 sim.posterior$posterior$acc.rate[100,]
 
-
 ```
+After I ran the MCMC, I include ACF and trace plots below. It was not too difficult to achieve an acceptance rate of 60\% in this case, although this was exceedingly difficult to do later on. I also note that in the ACF and trace plots below, there is not too much autocorrelation. There is a bit more autocorrelation in the trace and ACF plots for $\sigma^2$. For this example, I achieved an acceptance rate that is also included below.
 
 ```{r 3b, echo=FALSE, warning=FALSE,message=FALSE}
 ##
 #Problem 3 images
 ##
+sim.posterior$posterior$acc.rate[100,]
+par(mfrow=c(1,2))
 
 #ACF and trace plots
-plot(sim.posterior$posterior$beta$sample, type = "l")
-acf(sim.posterior$posterior$beta$sample)
+plot(sim.posterior$posterior$beta$sample, type = "l", ylab = "beta samples", main = "Trace Plot beta")
+acf(sim.posterior$posterior$beta$sample, main = "ACF beta")
 
-plot(sim.posterior$posterior$sigmasq$sample, type = "l")
-acf(sim.posterior$posterior$sigmasq$sample)
+plot(sim.posterior$posterior$sigmasq$sample, type = "l", ylab = "sigmasq samples", main = "Trace Plot sigmasq")
+acf(sim.posterior$posterior$sigmasq$sample, main = "ACF plot sigmasq")
 
 ```
 
@@ -145,17 +151,24 @@ sim.model <- model.glm.control(cov.model= "exponential")#, kappa = NA, not requi
 sim.prior <- prior.glm.control(phi.prior = "uniform", phi.discrete = seq(500,300000,500))
 # Experiment with changing S.scale and phi.scale to get acceptance rates of about 60%
 # and 25%, respectively.
-# S.scale 0.007
-sim.mcmc <- mcmc.control(S.scale = 0.01, phi.scale=0.12, Htrunc = "default", 
+set.seed(134)
+sim.mcmc <- mcmc.control(S.scale = 0.008, phi.scale=1000e6, Htrunc = "default", 
                          S.start = "random", 
                          burn.in = 0, thin = 100, n.iter = 100000)
 sim.posterior <- pois.krige.bayes(dove_mcmc, model=sim.model, prior=sim.prior, 
                                     mcmc.input=sim.mcmc)
 
+mean(sim.posterior$posterior$acc.rate[,2])
+mean(sim.posterior$posterior$acc.rate[,3])
+
 nrow(sim.posterior$posterior$acc.rate)
 sim.posterior$posterior$acc.rate[100,]
 
 ```
+
+As in Problem 3, I have run the MCMC code and I include the ACF and trace plots below. I also include the acceptance rates below. For this iteration, I had a very difficult time trying to find the values of S.scale and phi.scale that would lead anywhere close to the "acceptable" acceptance rates.
+
+When I look at the acf and trace plots again for this example, I notice that there is quite a bit of autocorrelation, as we expected to see. This is especially relevant for the plots of $sigma^2$ and $phi$, with $\phi$ having the most autocorrelation.
 
 ```{r 4b, echo=FALSE, warning=FALSE,message=FALSE}
 
@@ -163,17 +176,20 @@ sim.posterior$posterior$acc.rate[100,]
 #Problem 4 images
 ##
 
-#acf and trace plots for beta
-plot(sim.posterior$posterior$beta$sample, type = "l")
-acf(sim.posterior$posterior$beta$sample)
+sim.posterior$posterior$acc.rate[100,]
 
-#acf and trace plots for sigma^2
-plot(sim.posterior$posterior$sigmasq$sample, type = "l")
-acf(sim.posterior$posterior$sigmasq$sample)
+par(mfrow=c(1,2))
+#acf and trace plots for beta
+plot(sim.posterior$posterior$beta$sample, ylab = "beta samples", type = "l", main = "Trace Plot beta")
+acf(sim.posterior$posterior$beta$sample, main = "ACF plot beta")
+
+#acf and trace plots for sigmasq
+plot(sim.posterior$posterior$sigmasq$sample, ylab = "sigmasq samples", type = "l", main = "Trace Plot sigmasq")
+acf(sim.posterior$posterior$sigmasq$sample, main = "ACF plot sigmasq")
 
 #acf and trace plots for phi
-plot(sim.posterior$posterior$phi$sample, type = "l")
-acf(sim.posterior$posterior$phi$sample)
+plot(sim.posterior$posterior$phi$sample, ylab = "phi samples", type = "l", main = "Trace Plot phi")
+acf(sim.posterior$posterior$phi$sample, main = "ACF plot phi")
 
 ```
 
@@ -186,7 +202,7 @@ acf(sim.posterior$posterior$phi$sample)
 \item \textbf{Plot the marginal posterior distributions for each parameter using histograms and/or kernel density estimators.}
 \end{itemize}
 
-```{r 5, echo=FALSE, warning=FALSE,message=FALSE}
+```{r 5, echo=FALSE, warning=FALSE,message=FALSE, include = FALSE}
 ##
 #Problem 5
 ##
@@ -198,91 +214,128 @@ sim.prior <- prior.glm.control(phi.prior = "uniform", phi.discrete = seq(500,300
 # Experiment with changing S.scale and phi.scale to get acceptance rates of about 60%
 # and 25%, respectively.
 # S.scale 0.007
-sim.mcmc <- mcmc.control(S.scale = 0.01, phi.scale=0.12, Htrunc = "default", 
+set.seed(134) #80%, 26
+sim.mcmc <- mcmc.control(S.scale = 0.008, phi.scale=1000e6, Htrunc = "default", 
                          S.start = "random", 
                          burn.in = 0, thin = 1e4, n.iter = 1e7)
 sim.posterior <- pois.krige.bayes(dove_mcmc, model=sim.model, prior=sim.prior, 
                                     mcmc.input=sim.mcmc)
 
-nrow(sim.posterior$posterior$acc.rate)
-sim.posterior$posterior$acc.rate[100,]
+n <- nrow(sim.posterior$posterior$acc.rate)
+sim.posterior$posterior$acc.rate[n,]
 
 ```
+Once again, I include my acceptance rate below as well as my trace and ACF plots. For this example, I chose my burnin value to be 50,000 I notice that the plots vary quite a bit less after I get rid of the burnin.  
 
 ```{r 5b, echo=FALSE, warning=FALSE,message=FALSE}
 ##
 #Problem 5 images
 ##
 
-#acf and trace plots for beta
-plot(sim.posterior$posterior$beta$sample, type = "l")
-acf(sim.posterior$posterior$beta$sample)
+sim.posterior$posterior$acc.rate[n,]
 
-#acf and trace plots for sigma^2
-plot(sim.posterior$posterior$sigmasq$sample, type = "l")
-acf(sim.posterior$posterior$sigmasq$sample)
+par(mfrow=c(1,2))
+#acf and trace plots for beta
+plot(sim.posterior$posterior$beta$sample, ylab = "beta samples", type = "l", main = "Trace Plot beta")
+acf(sim.posterior$posterior$beta$sample, main = "ACF plot beta")
+
+#acf and trace plots for sigmasq
+plot(sim.posterior$posterior$sigmasq$sample, ylab = "sigmasq samples", type = "l", main = "Trace Plot sigmasq")
+acf(sim.posterior$posterior$sigmasq$sample, main = "ACF plot sigmasq")
 
 #acf and trace plots for phi
-plot(sim.posterior$posterior$phi$sample, type = "l")
-acf(sim.posterior$posterior$phi$sample)
+plot(sim.posterior$posterior$phi$sample, ylab = "phi samples", type = "l", main = "Trace Plot phi")
+acf(sim.posterior$posterior$phi$sample, main = "ACF plot phi")
 
 #choose a burnin to discard and make them again
 burnin <- 1:50
-test <- sim.posterior$posterior$sigmasq$sample
+#length(sim.posterior$posterior$sigmasq$sample)
 post.burnin_sig <- sim.posterior$posterior$sigmasq$sample[-c(burnin)]
 post.burnin_b <- sim.posterior$posterior$beta$sample[-c(burnin)]
 post.burnin_phi <- sim.posterior$posterior$phi$sample[-c(burnin)]
 
-#acf and trace plots for beta
-plot(post.burnin_b, type = "l")
-acf(post.burnin_b)
 
-#acf and trace plots for sigma^2
-plot(post.burnin_sig, type = "l")
-acf(post.burnin_sig)
+```
+I remove the burnin and re-create the plots.
+```{r 5c, echo=FALSE, warning=FALSE,message=FALSE}
+par(mfrow=c(1,2))
+#acf and trace plots for beta
+plot(post.burnin_b, ylab = "beta samples", type = "l", main = "Post Burnin Trace Plot beta")
+acf(post.burnin_b, main = "Post Burnin ACF plot beta")
+
+#acf and trace plots for sigmasq
+plot(post.burnin_sig, ylab = "sigmasq samples", type = "l", main = "Post Burnin Trace Plot sigmasq")
+acf(post.burnin_sig, main = "Post Burnin ACF plot sigmasq")
 
 #acf and trace plots for phi
-plot(post.burnin_phi, type = "l")
-acf(post.burnin_phi)
+plot(post.burnin_phi, ylab = "phi samples", type = "l", main = "Post Burnin Trace Plot phi")
+acf(post.burnin_phi, main = "Post Burnin ACF plot phi")
+```
 
+My effective sample sizes for each parameter are included below, and are all above 100.
 
+I have also included plots for the marginal posterior distributions for each parameter, which includes a histogram and the kernel density esimtators.
+
+```{r 5d, echo=FALSE, warning=FALSE,message=FALSE}
 #calculate the effective sample size for each parameter
 ##if they are not all at least 100 for each parameter, go back and run a longer chain
-ess(post.burnin_sig)
-ess(post.burnin_phi)
-ess(post.burnin_b)
+print(paste("Sigmasq effective sample size is " ,ess(post.burnin_sig)))
+print(paste("Phi effective sample size is " , ess(post.burnin_phi)))
+print(paste("Beta effective sample size is ", ess(post.burnin_b)))
 
 #plot the marginal and posterior distributions for each parameter using histograms and/or kernel density estimators
 #par(mfrow = c(1,3))
-hist(sim.posterior$posterior$beta$sample, main ="beta")
-hist(sim.posterior$posterior$sigmasq$sample, main = "sigmasq")
-hist(sim.posterior$posterior$phi$sample, main = "phi") 
+#
+par(mfrow=c(1,3))
+hist(post.burnin_b,freq=F, main ="beta histogram with kernel density estimator")
+points(density(post.burnin_b), type = 'l', col = 'blue')
+hist(post.burnin_sig, freq=F, main = "sigmasq histogram with kernel density estimator")
+points(density(post.burnin_sig), type = 'l', col = 'blue')
+hist(post.burnin_phi,freq=F, main = "phi histogram with kernel density estimator") 
+points(density(post.burnin_phi), type = 'l', col = 'blue')
+
 
 ```
+
 
 ### Problem 6
 \textbf{Do one final run of the chain, the same as in (5), but this time specifying the burn-in value you chose in (5) and also modifying the code to include prediction at the locations in dove.grid. Create two color or grayscale plots, showing the posterior mean and standard deviation for the underlying mean surface (exp $\eta$) at each location in dove.grid.}
 
-```{r 6, echo=FALSE, warning=FALSE,message=FALSE}
+```{r 6, echo=FALSE, warning=FALSE,message=FALSE, include = FALSE}
 ##
 #Problem 6
 ##
+
 #Do one final run of the chain, the same as in (5), but this time specifying the burn-in value you chose in (5) and also modifying the code to include prediction at the locations in dove.grid.
 sim.model <- model.glm.control(cov.model= "exponential")#, kappa = NA, not required for exponetnial
 sim.prior <- prior.glm.control(phi.prior = "uniform", phi.discrete = seq(500,300000,500))
 #S.scale = 0.5, 0.2, 0.7
 # Experiment with changing S.scale and phi.scale to get acceptance rates of about 60%
 # and 25%, respectively.
-sim.mcmc <- mcmc.control(S.scale = 0.007, phi.scale=100, Htrunc = "default", 
+set.seed(130) #80%, 26
+sim.mcmc <- mcmc.control(S.scale = 0.008, phi.scale=1000e6, Htrunc = "default",
                          S.start = "random", 
-                         burn.in = 50, thin = 1e3, n.iter =  1e5)
+                         burn.in = 50e3, thin = 1e4, n.iter =  1e7)
+#keep MCMC sample
 sim.posterior <- pois.krige.bayes(dove_mcmc, model=sim.model, prior=sim.prior, 
-                                    mcmc.input=sim.mcmc, locations=dove.grid)
+                                    mcmc.input=sim.mcmc, locations=dove.grid, output =
+                                    output.glm.control(keep.mcmc.sim=TRUE, sim.predict = TRUE))
+
+
+pred_sim <- sim.posterior$predictive$simulations
+#test2 <- sim.posterior$posterior$simulations
 
 post_med <- sim.posterior$predictive$median
 uncertainty <- sim.posterior$predictive$uncertainty
 
+#pred_sim <- exp(pred_sim)
+
+post_mean <- apply(pred_sim, 1, mean)
+post_sd <- apply(pred_sim, 1, sd)
+
 ```
+
+Once again, I have made a final run of the chain, as in (5), but I specified the burnin value that I chose in (5) in the function. I also included my two plots with the posterior mean and standard deviation of the underlying mean surface below. I also included a plot of the original observations. I see that the mean surface corresponds pretty well with this graph and that the standard deviation is highest where there aren't many observations. It just so happens that the lowest standard deviations (where there are more observations) occur where there are also low dove counts, in the middle of the state.
 
 ```{r 6b, echo=FALSE, warning=FALSE,message=FALSE}
 ##
@@ -298,21 +351,55 @@ ploteqc <- function(spobj, z, breaks, ...){
 }
 
 
-plot(dove)
+library(rgdal)
+utms <- SpatialPoints(cbind(dove.grid$x, dove.grid$y),
+                      proj4string=CRS("+proj=utm +zone=15"))
+dove.longlat <- spTransform(utms, CRS("+proj=longlat"))
+utms2 <- SpatialPoints(dove, proj4string=CRS("+proj=utm +zone=15"))
+dove.longlat2 <- spTransform(utms2, CRS("+proj=longlat"))
 
-range(post_med)
-breaks <- seq(8, 70, by = 0.01)
-ploteqc(dove.grid, post_med, breaks, pch = 19)
-#map("county", region = "missouri", add = TRUE)
-title(main = "Posterior Mean")
 
 
-range(uncertainty)
-breaks <- seq(2, 35, by = 0.01)
-ploteqc(dove.grid, uncertainty, breaks, pch = 19)
-#map("county", region = "missouri", add = TRUE)
-title(main = "Posterior Mean")
+par(mfrow=c(2,2))
+
+ploteqc(dove.longlat, post_mean, seq(min(post_mean),max(post_mean),length=20), pch=19)
+map("county", region = "missouri", add = TRUE)
+title("Posterior mean")
+
+ploteqc(dove.longlat, post_sd, seq(min(post_sd),max(post_sd),length=20), pch=19)
+map("county", region = "missouri", add = TRUE)
+title("Uncertainty")
 points(dove)
+
+ploteqc(dove.longlat2, dove$counts, seq(min(dove$counts),max(dove$counts),length=20), pch=19)
+map("county", region = "missouri", add = TRUE)
+title("Actual Data Points, log transform (z_i= log(count_i))")
+
+dove$counts <- exp(dove$counts)
+ploteqc(dove.longlat2, dove$counts, seq(min(dove$counts),max(dove$counts),length=20), pch=19)
+map("county", region = "missouri", add = TRUE)
+title("Actual Data Points, exp(z_i)")
+
+
+
+
+# plot(dove)
+# 
+# range(post_med)
+# breaks <- seq(8, 70, by = 0.01)
+# 
+# 
+# ploteqc(dove.grid, post_med, breaks, pch = 19)
+# map("county", region = "missouri", add = TRUE)
+# title(main = "Posterior Median")
+# 
+# 
+# range(uncertainty)
+# breaks <- seq(2, 35, by = 0.01)
+# ploteqc(dove.grid, uncertainty, breaks, pch = 19)
+# #map("county", region = "missouri", add = TRUE)
+# title(main = "Posterior Mean")
+# points(dove)
 
 ```
 
@@ -326,14 +413,17 @@ points(dove)
 ```
 ```{r appendix3, ref.label='4', eval = FALSE}
 ```
-```{r appendix5, ref.label='4b', eval = FALSE}
+```{r appendix5d, ref.label='4b', eval = FALSE}
 ```
 ```{r appendix4, ref.label='5', eval = FALSE}
 ```
 ```{r appendix5, ref.label='5b', eval = FALSE}
 ```
-```{r appendix5, ref.label='6', eval = FALSE}
+```{r appendix5b, ref.label='5c', eval = FALSE}
 ```
-```{r appendix5, ref.label='6b', eval = FALSE}
+```{r appendix5c, ref.label='5d', eval = FALSE}
 ```
-\end{document}
+```{r appendix6, ref.label='6', eval = FALSE}
+```
+```{r appendix6b, ref.label='6b', eval = FALSE}
+```
