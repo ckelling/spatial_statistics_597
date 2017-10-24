@@ -2,7 +2,7 @@
 title: "Homework 3"
 subtitle: "Stat 597a: Spatial Models"
 author: "Claire Kelling"
-date: "Due XXXXX, 2017"
+date: "Due October 31, 2017"
 output: pdf_document
 ---
 ```{r setup, include=FALSE, warning=FALSE}
@@ -20,12 +20,291 @@ set.seed(123)
 ```
 
 ## Problem 1: 
-\textbf{}
+\textbf{Fit a linear model relating rent per square meter to the covariates using least squares, and extract the coefficient estimates. You can ignore the Location variable for now since we will later treat this as a random effect. Also note that the room indicator variables include one that is redundant, so treat a single room as the baseline (i.e., leave Room1 out of the model, so the intercept corresponds to a single room and coefficients for the others represent adjustments to the intercept for a different number of rooms).}
+```{r 1, echo=FALSE, warning=FALSE,message=FALSE}
+
+#load the data
+load("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 3/data/munichrents.RData")
+
+head(rents)
+
+#Fit a linear model relating rent per square meter to the covariates using least squares
+#  This model is fit without Location (used this later as a random effect)
+#  This model is also fit without Room1 because we treat a single room as the baseline
+lin_mod <- lm(RentPerM2~ Year+ NoHotWater+NoCentralHeat+ NoBathTiles+
+                SpecialBathroom + SpecialKitchen +Room2+Room3+Room4+Room5+Room6,
+              data=rents)
+summary(lin_mod)
+
+#extract the coefficient estimates
+beta <- lin_mod$coefficients
+
+```
+
+
+## Problem 2: 
+\textbf{There are two SpatialPolygons objects associated with this dataset, districts.sp and parks.sp. The first corresponds to city districts in which apartments may be located. The second corresponds to districts with no possible apartments, such as parks or fields.
+Create an nb object with neighbors for the districts, defining neighbors as districts that share a common boundary. Make a plot showing the districts, then add the parks shaded a different color. Think about the way parks are treated; what else could we do?}
 ```{r 2, echo=FALSE, warning=FALSE,message=FALSE}
+
+plot(parks.sp)
+plot(districts.sp)
+
+#Create an nb object with neighbors for the districts, defining neighbors as districts that 
+#share a common boundary.
+district_neighb <- gridIndex2nb(districts.sp)
+
+#Make a plot showing the districts, then add the parks shaded a different color.
+plot(districts.sp, main = "Map of the Districts, Parks in Red")
+plot(parks.sp,col = "red", add=TRUE)
 
 
 ```
 
+## Problem 3:
+\textbf{There are 380 districts in districts.sp, and the corresponding district numbers are indicated by the Location variable in rents. How many of the 380 districts appear in the rent dataset?
+I've included a matrix H that provides a mapping between the districts as they're ordered in districts.sp and as they appear in the rents dataframe. Use H to create a new vector containing the number of observations in each district, and make a color or grayscale plot to illustrate this. Note that inference for unobserved districts will still be possible under a hierarchical mixed effects model, since we can "borrow strength" from nearby districts that do have observations.}
+
+```{r 3, echo=FALSE, warning=FALSE,message=FALSE}
+#How many of the 380 districts appear in the rent dataset?
+length(unique(rents$Location))
+# There are 312 districts represented in the rents dataset, of the 380 total districts.
+ 
+# Use H to create a new vector containing the number of observations in each district
+# There are 380 districts, so I want a 1x380 or 380x1 vector
+dim(H) #H is of dimension 2035X380
+#So, I need (1x2035)(2035x380) = 1x380
+rents$indicator <- rep(1, nrow(rents))
+num_per_dist <- rents$indicator%*% H
+sum(num_per_dist) # This is equal to 2035, the total number of observations (rows) in the rent dataset
+
+# I need to make this a scale, instead of a factor (probably need to use fill, instead of col)
+num_per_dist <- as.numeric(num_per_dist)
+plot(districts.sp,col= num_per_dist, main = "Map of the Districts with Observatoin Frequency")
+
+
+# ggplot() +
+#     geom_polygon(data = map_data, aes(x = long, y = lat, group = group, fill = total_rank), color = 'black') + 
+#     scale_fill_gradient(low = "pink", high = "red")
+
+```
+## Problem 4
+\textbf{We will now create a Gibbs sampler to sample from the posterior distribution under the following Bayesian model. Let X be the matrix of covariates, including the intercept term. Let n be the number of data points in Y and m be the number of spatial locations in $\eta$.}
+Data model:
+$$ Y|\beta,\eta,\sigma^2 \sim N(X\beta + H\eta,\sigma^2I) $$
+Process model:
+$$ p(\eta|\tau^2) \propto (\tau^2)^{-(m-1)/2}\exp\{\frac{-1}{2\tau^2}\eta^T(D_w-W)\eta\} $$
+where W is the matrix of 0's and 1's indicating the neighborhood structure from problem 2, and $D_w$ is a diagonal matrix with diagonal entries $\sum_j W_{1j},...,\sum_j W_{nj}$. That is, $\eta$ follows an (improper) intrinsic autoregressive model. The $-(m-1)/2$ exponent on $\tau^2$ is due to the fact that the matrix $D_w -???? W$ has rank m-1 rather than m.
+
+Prior model: Specify independent priors for $\beta$, $\sigma^2$, and $\tau^2$, with
+$$ p(\beta) \propto 1, \text{   and   } \sigma^2, \tau^2 \sim InverseGamma(0:001, 0:001)$$
+The full conditional distributions for $\beta$, $\eta$ $\sigma^2$, and $\tau^2$ are given at the end of this assignment. Construct a Gibbs sampler that cycles through each of the full conditionals and stores the results for B = 10,000 iterations. The full conditionals are given below.
+
+A few notes to keep in mind when constructing the sampler:
+\begin{itemize}
+\item The matrix W can be computed from your nb object in problem 2; see help(nb2mat). I also included objects X and y with the data file.
+\item The function rinvgamma is in the library MCMCpack.
+\item IMPORTANT: The intrinsic autoregressive model is an example of a pair-wise difference prior. It defines proper distributions for the differences $n_i-n_j$, but it also implicitly contains a distribution for $\frac{1}{m}\sum_{i=1}^{m}\eta_i$ that has infinite variance. In practice, since there is also an intercept term in $X\beta$, we impose the constraint $\sum_{i=1}^{m}\eta_i =0$ when we sample from the full conditional for $\eta$. \textbf{Do this numerically by subtracting the mean $\frac{1}{m}\sum_{i=1}^{m}\eta_i^{(j)}$ from $\eta^{(j)}$ in each iteration j.}
+
+\end{itemize}
+
+```{r 4, echo=FALSE, warning=FALSE,message=FALSE}
+# Construct a Gibbs sampler that cycles through each of the full conditionals and stores 
+# the results for B = 10,000 iterations.
+ 
+## Prior parameters
+
+m.beta <- rep(0, 4); V.beta <- 100000 * diag(4)
+a.s2 <- 0.001; b.s2 <- 0.001
+a.t2 <- 0.001; b.t2 <- 0.001
+
+rhoseq <- seq(0.01, 300, length = 100)
+plot(rhoseq, dgamma(rhoseq, shape = 1, scale = 1)) # old prior for rho
+m.rho <- 100; v.rho <- 5000
+b.rho <- v.rho/m.rho; a.rho <- m.rho/b.rho
+plot(rhoseq, dgamma(rhoseq, shape = a.rho, scale = b.rho), type = "l") # new prior for rho
+
+## Setup, storage, and starting values
+
+y <- CAtemp$avgtemp
+n <- nrow(CAtemp); m <- nrow(CAgrid)
+d <- rdist.earth(coordinates(CAtemp))
+X <- cbind(rep(1, n), CAtemp$lon, CAtemp$lat, CAtemp$elevation)
+Xpred <- cbind(rep(1, m), CAgrid$lon, CAgrid$lat, CAgrid$elevation)
+
+B <- 1000
+
+beta.samps <- matrix(NA, nrow = 4, ncol = B)
+beta.samps[,1] <- coef(linmod)
+
+s2.samps <- t2.samps <- rho.samps <- rep(NA, B)
+s2.samps[1] <- fitvg$psill[2]
+rho.samps[1] <- fitvg$range[2]
+t2.samps[1] <- fitvg$psill[1]
+
+eta.obs.samps <- matrix(NA, nrow = n, ncol = B)
+
+v.prop <- 100^2
+
+## MCMC sampler
+
+Gamma <- exp(-d/rho.samps[1]) # initalize Gamma matrix
+Ginv <- solve(Gamma)
+
+for(i in 2:B){
+
+  if(i%%100==0) print(i)
+  
+  ## eta_obs | Rest
+  V <- solve(diag(n)/t2.samps[i-1] + Ginv/s2.samps[i-1])
+  m <- V %*% (y/t2.samps[i-1] + Ginv %*% X %*% 
+    beta.samps[,i-1] / s2.samps[i-1])
+  eta.obs.samps[,i] <- rmvnorm(1, mean = m, sigma = V, method = "svd")
+  
+  ## beta | Rest
+  V <- solve(t(X) %*% Ginv %*% X / s2.samps[i-1] + solve(V.beta))
+  m <- V %*% (t(X) %*% Ginv %*% eta.obs.samps[,i] / 
+    s2.samps[i-1] + solve(V.beta, m.beta))
+  beta.samps[,i] <- rmvnorm(1, mean = m, sigma = V, method = "svd")
+  
+  ## s2 | Rest
+  a <- a.s2 + n/2
+  resid <- eta.obs.samps[,i] - X %*% beta.samps[,i]
+  b <- b.s2 + t(resid) %*% Ginv %*% resid /2
+  s2.samps[i] <- rinvgamma(1, a, b)
+
+  ## t2 | Rest
+  a <- a.t2 + n/2
+  resid <- y - eta.obs.samps[,i]
+  b <- b.t2 + t(resid) %*% resid / 2
+  t2.samps[i] <- rinvgamma(1, a, b)
+  
+  ## rho | Rest 
+  
+  # Visualize posterior surface
+  # The ratio of this function at rho.cand to rho.samps[i-1] is what determines r
+  if(FALSE){
+  prho <- sapply(rhoseq, function(rho){
+    dmvnorm(eta.obs.samps[,i], mean = X %*% beta.samps[,i], 
+            sigma = s2.samps[i] * exp(-d/rho), log = TRUE) +
+     dgamma(rho, shape = a.rho, scale = b.rho, log = TRUE)})
+  plot(rhoseq, exp(prho), type = "l")
+  }
+  
+  rho.cand <- rnorm(1, mean = rho.samps[i-1], sd = sqrt(v.prop))
+  if(rho.cand < 0){ # automatically reject
+    rho.samps[i] <- rho.samps[i-1]
+  } else {
+    lik1 <- dmvnorm(eta.obs.samps[,i], mean = X %*% beta.samps[,i],
+                    sigma = s2.samps[i] * exp(-d/rho.cand), log = TRUE)
+    lik2 <- dmvnorm(eta.obs.samps[,i], mean = X %*% beta.samps[,i],
+                    sigma = s2.samps[i] * exp(-d/rho.samps[i-1]), log = TRUE)
+    p1 <- dgamma(rho.cand, shape = a.rho, scale = b.rho, log = TRUE)
+    p2 <-   dgamma(rho.samps[i-1], shape = a.rho, scale = b.rho, log = TRUE)
+    r <- exp(lik1 + p1 - lik2 - p2)
+    if(runif(1) < r){ # accept
+      rho.samps[i] <- rho.cand
+      Gamma <- exp(-d/rho.cand) 
+      Ginv <- solve(Gamma)
+    } else { # reject
+      rho.samps[i] <- rho.samps[i-1]
+    }
+  }
+
+}
+
+## Diagnostics
+
+plot(beta.samps[1,], type = "l")
+plot(s2.samps, type = "l")
+plot(rho.samps, type = "l")
+plot(t2.samps, type = "l")
+plot(eta.obs.samps[1,], type = "l")
+
+length(unique(rho.samps[1:B]))/B # acc rate
+
+burnin <- 100
+s2.final <- s2.samps[-(1:burnin)]
+t2.final <- t2.samps[-(1:burnin)]
+beta.final <- beta.samps[,-(1:burnin)]
+eta.obs.final <- eta.obs.samps[,-(1:burnin)]
+rho.final <- rho.samps[-(1:burnin)]
+
+acf(s2.final)
+acf(t2.final)
+acf(beta.final[1,])
+acf(eta.obs.final[1,])
+acf(rho.final)
+
+effectiveSize(s2.final)
+effectiveSize(t2.final)
+effectiveSize(beta.final[1,])
+effectiveSize(eta.obs.final[1,])
+effectiveSize(rho.final)
+
+## Prediction
+
+dcross <- rdist.earth(coordinates(CAtemp), coordinates(CAgrid))
+dpred <- rdist.earth(coordinates(CAgrid))
+
+index <- seq(1, B-burnin, by = 20) # which samples to use (thinning)
+eta.pred <- matrix(NA, nrow = nrow(CAgrid), ncol = length(index))
+
+for(i in 1:length(index)){
+  print(i)
+  j <- index[i]
+  
+  # Construct the covariance matrices
+  Gamma <- exp(-d/rho.samps[j]) 
+  Ginv <- solve(Gamma)
+  g <- exp(-dcross/rho.samps[j])
+  Gpred <- exp(-dpred/rho.samps[j])
+  
+  m <- Xpred %*% beta.final[,j] + t(g) %*% Ginv %*% 
+    (y - X %*% beta.final[,j])
+  V <- s2.final[j] * (Gpred - t(g)%*%Ginv%*%g)
+  eta.pred[,i] <- rmvnorm(1, m, V, method = "svd")
+}
+
+## Find pointwise posterior means and sds
+
+eta.pred.m <- apply(eta.pred, 1, mean)
+eta.pred.sd <- apply(eta.pred, 1, sd)
+
+range(eta.pred.m)
+breaks <- seq(30, 80, by = 5)
+
+ploteqc(CAgrid, eta.pred.m, breaks, pch = 19)
+map("county", region = "california", add = TRUE)
+title(main = "Posterior Mean")
+
+range(eta.pred.sd)
+breaks <- seq(0, 3.4, by = 0.2)
+
+ploteqc(CAgrid, eta.pred.sd, breaks, pch = 19)
+map("county", region = "california", add = TRUE)
+points(CAtemp)
+title(main = "Posterior Standard Deviation") 
+
+
+```
+
+Turn in the following:
+\begin{itemize}
+\item Your map with the neighbors from problem 
+\item Your map of the apartment counts for each district
+\item Trace plots and ACF plots for $\sigma^2$ and $\tau^2$
+\item A table with posterior means of the $\beta$'s and 95% credible intervals constructed using the 0.025 and 0.975 quantiles of the posterior samples
+\item A color or grayscale map of the posterior means for the vector $\eta$
+\item A color or grayscale map of the posterior standard deviations for the vector $\eta$
+\end{itemize}
+
+
+\textbf{Full Conditionals:}
+$ \beta|Rest \sim N((X^TX)^{-1}X^T(Y-H_\eta), \sigma^2(X^TX)^{-1}) $
+$ \eta|Rest \sim N([H^TH/\sigma^2 + (D_w-W)/\tau^2]^{-1}H^T(Y_X\beta)/\sigma^2, [H^TH/\sigma^2 +(D_w-W)/\tau^2]^{-1}) $
+$ \sigma^2|Rest \sim InverseGamma(0.001 +n/2, 0.001 + (Y-X\beta-H\eta)^T(Y-X\beta-H\eta)/2) $
+$ \tau^2|Rest \sim InverseGamma(0.001 + (m-1)/2, 0.001 + \eta^T(D_w-W)\eta/2) $
 
 
 
