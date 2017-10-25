@@ -13,8 +13,15 @@ library(sp)
 library(gstat)
 library(fields)
 library(classInt)
+library(ggplot2)
 library(maps)
 library(mcmcse)
+library(maptools)
+library(spdep)
+library(tmap)
+library(dplyr)
+library(MCMCpack)
+library(mvtnorm)
 set.seed(123)
 
 ```
@@ -50,9 +57,20 @@ Create an nb object with neighbors for the districts, defining neighbors as dist
 plot(parks.sp)
 plot(districts.sp)
 
+
+NC= readShapePoly(system.file("shapes/sids.shp", package="maptools")[1], IDvar="FIPSNO", proj4string=CRS("+proj=longlat +ellps=clrk66"))
+
 #Create an nb object with neighbors for the districts, defining neighbors as districts that 
 #share a common boundary.
-district_neighb <- gridIndex2nb(districts.sp)
+#queen is the option that has neigbor being at least one point shared, including corners
+#rook does not include corners, only borders
+district_neighb <- poly2nb(districts.sp, queen = FALSE)
+
+#plot the neighborhoods
+coords <- coordinates(districts.sp)
+plot(districts.sp, main = "Districts with Neighbors")
+plot(district_neighb, coords, col="blue", add = TRUE)
+
 
 #Make a plot showing the districts, then add the parks shaded a different color.
 plot(districts.sp, main = "Map of the Districts, Parks in Red")
@@ -73,19 +91,25 @@ length(unique(rents$Location))
 # Use H to create a new vector containing the number of observations in each district
 # There are 380 districts, so I want a 1x380 or 380x1 vector
 dim(H) #H is of dimension 2035X380
-#So, I need (1x2035)(2035x380) = 1x380
+# So, I need (1x2035)(2035x380) = 1x380
 rents$indicator <- rep(1, nrow(rents))
 num_per_dist <- rents$indicator%*% H
+dim(num_per_dist) # this is my 1x380 vector
 sum(num_per_dist) # This is equal to 2035, the total number of observations (rows) in the rent dataset
-
-# I need to make this a scale, instead of a factor (probably need to use fill, instead of col)
 num_per_dist <- as.numeric(num_per_dist)
-plot(districts.sp,col= num_per_dist, main = "Map of the Districts with Observatoin Frequency")
 
+#Now I will create the data structure that I need to create a plot
+sp_f <- fortify(districts.sp)
+head(sp_f)
+districts.sp$id <- row.names(districts.sp)
+head(districts.sp@data, n=2)
+districts.sp@data$num <- t(num_per_dist)
+sp_f <- left_join(sp_f, districts.sp@data)
 
-# ggplot() +
-#     geom_polygon(data = map_data, aes(x = long, y = lat, group = group, fill = total_rank), color = 'black') + 
-#     scale_fill_gradient(low = "pink", high = "red")
+#make a color or grayscale plot to illustrate this
+ggplot(sp_f, aes(long, lat, group = group, fill = num)) + geom_polygon() + coord_equal() + 
+  labs(fill = "# of \nObservations") +
+  ggtitle("Number of Observations per District")+ scale_fill_gradient(low = "white", high = "black")
 
 ```
 ## Problem 4
@@ -111,105 +135,63 @@ A few notes to keep in mind when constructing the sampler:
 ```{r 4, echo=FALSE, warning=FALSE,message=FALSE}
 # Construct a Gibbs sampler that cycles through each of the full conditionals and stores 
 # the results for B = 10,000 iterations.
- 
-## Prior parameters
 
-m.beta <- rep(0, 4); V.beta <- 100000 * diag(4)
+# I will start by creating the input parameters/vectors/matrices
+n <-  nrow(rents) # number of data points in Y
+m <- nrow(districts.sp) # number of spatial locations in eta
+W <- nb2mat(neighbours = district_neighb, style = "B") #W is matrix of 0's and 1's indicating neighb structure from 2, need style = B to be binary (W is row standardized)
+#X and y are given in the data file
+D <- diag(rowSums(W)) # diagonal matrix with row sums of W
+
+#is there a typo in this question? row sum up to m, not n?
+
+#how many iterations
+B <- 10000
+
+#Prior parameters
+b <- 1
 a.s2 <- 0.001; b.s2 <- 0.001
 a.t2 <- 0.001; b.t2 <- 0.001
 
-rhoseq <- seq(0.01, 300, length = 100)
-plot(rhoseq, dgamma(rhoseq, shape = 1, scale = 1)) # old prior for rho
-m.rho <- 100; v.rho <- 5000
-b.rho <- v.rho/m.rho; a.rho <- m.rho/b.rho
-plot(rhoseq, dgamma(rhoseq, shape = a.rho, scale = b.rho), type = "l") # new prior for rho
+#setup and storage and starting values
+beta.samps <- matrix(NA, nrow = 12, ncol = B)
+beta.samps[,1] <- beta #coefficients from problem 1
 
-## Setup, storage, and starting values
+s2.samps <- t2.samps <- rep(NA, B)
+#eta.obs.samps <- matrix(NA, nrow = n, ncol = B)
+s2.samps[1] <- t2.samps[1] <- 1
 
-y <- CAtemp$avgtemp
-n <- nrow(CAtemp); m <- nrow(CAgrid)
-d <- rdist.earth(coordinates(CAtemp))
-X <- cbind(rep(1, n), CAtemp$lon, CAtemp$lat, CAtemp$elevation)
-Xpred <- cbind(rep(1, m), CAgrid$lon, CAgrid$lat, CAgrid$elevation)
-
-B <- 1000
-
-beta.samps <- matrix(NA, nrow = 4, ncol = B)
-beta.samps[,1] <- coef(linmod)
-
-s2.samps <- t2.samps <- rho.samps <- rep(NA, B)
-s2.samps[1] <- fitvg$psill[2]
-rho.samps[1] <- fitvg$range[2]
-t2.samps[1] <- fitvg$psill[1]
-
-eta.obs.samps <- matrix(NA, nrow = n, ncol = B)
-
-v.prop <- 100^2
+eta.obs.samps <- matrix(NA, nrow = m, ncol = B)
+eta.obs.samps[,1] <- rep(1, m)
+y <- as.matrix(y)
 
 ## MCMC sampler
-
-Gamma <- exp(-d/rho.samps[1]) # initalize Gamma matrix
-Ginv <- solve(Gamma)
-
 for(i in 2:B){
-
   if(i%%100==0) print(i)
   
-  ## eta_obs | Rest
-  V <- solve(diag(n)/t2.samps[i-1] + Ginv/s2.samps[i-1])
-  m <- V %*% (y/t2.samps[i-1] + Ginv %*% X %*% 
-    beta.samps[,i-1] / s2.samps[i-1])
-  eta.obs.samps[,i] <- rmvnorm(1, mean = m, sigma = V, method = "svd")
-  
-  ## beta | Rest
-  V <- solve(t(X) %*% Ginv %*% X / s2.samps[i-1] + solve(V.beta))
-  m <- V %*% (t(X) %*% Ginv %*% eta.obs.samps[,i] / 
-    s2.samps[i-1] + solve(V.beta, m.beta))
-  beta.samps[,i] <- rmvnorm(1, mean = m, sigma = V, method = "svd")
+  ## beta_obs | Rest
+  mu_b <- solve(t(X)%*%X)%*%t(X)%*%(y-H%*%as.matrix(eta.obs.samps[,i-1]))
+  Sig_b <- s2.samps[i-1]*solve(t(X)%*%X)
+  beta.samps[,i] <- rmvnorm(1, mean= mu_b, sigma = Sig_b, method = "svd") 
+   
+  ## eta | Rest
+  mu_e <- solve((t(H)%*%H)/s2.samps[i-1] + (D-W)/t2.samps[i-1])%*%t(H)%*%(y-X%*%beta.samps[,i-1])/s2.samps[i-1]
+  Sig_e <- solve(t(H)%*%H/s2.samps[i-1] + (D-W)/t2.samps[i-1])
+  eta.pre <- rmvnorm(1, mean = mu_e, sigma = Sig_e, method = "svd")
+  #need to adjust for the pairwise difference prior
+  eta.obs.samps[,i] <- eta.pre - mean(eta.pre) 
   
   ## s2 | Rest
-  a <- a.s2 + n/2
-  resid <- eta.obs.samps[,i] - X %*% beta.samps[,i]
-  b <- b.s2 + t(resid) %*% Ginv %*% resid /2
+  a <- 0.001 + n/2
+  resid <- y-X%*%beta.samps[,i-1]
+  second_part <- H%*%as.matrix(eta.obs.samps[,i-1])
+  b <- 0.001 + t(resid-second_part)%*%(resid-second_part)/2
   s2.samps[i] <- rinvgamma(1, a, b)
 
   ## t2 | Rest
-  a <- a.t2 + n/2
-  resid <- y - eta.obs.samps[,i]
-  b <- b.t2 + t(resid) %*% resid / 2
+  a <- 0.001 + (m-1)/2
+  b <- 0.001 + t(as.matrix(eta.obs.samps[,i-1]))%*%(D-W)%*%as.matrix(eta.obs.samps[,i-1])/2
   t2.samps[i] <- rinvgamma(1, a, b)
-  
-  ## rho | Rest 
-  
-  # Visualize posterior surface
-  # The ratio of this function at rho.cand to rho.samps[i-1] is what determines r
-  if(FALSE){
-  prho <- sapply(rhoseq, function(rho){
-    dmvnorm(eta.obs.samps[,i], mean = X %*% beta.samps[,i], 
-            sigma = s2.samps[i] * exp(-d/rho), log = TRUE) +
-     dgamma(rho, shape = a.rho, scale = b.rho, log = TRUE)})
-  plot(rhoseq, exp(prho), type = "l")
-  }
-  
-  rho.cand <- rnorm(1, mean = rho.samps[i-1], sd = sqrt(v.prop))
-  if(rho.cand < 0){ # automatically reject
-    rho.samps[i] <- rho.samps[i-1]
-  } else {
-    lik1 <- dmvnorm(eta.obs.samps[,i], mean = X %*% beta.samps[,i],
-                    sigma = s2.samps[i] * exp(-d/rho.cand), log = TRUE)
-    lik2 <- dmvnorm(eta.obs.samps[,i], mean = X %*% beta.samps[,i],
-                    sigma = s2.samps[i] * exp(-d/rho.samps[i-1]), log = TRUE)
-    p1 <- dgamma(rho.cand, shape = a.rho, scale = b.rho, log = TRUE)
-    p2 <-   dgamma(rho.samps[i-1], shape = a.rho, scale = b.rho, log = TRUE)
-    r <- exp(lik1 + p1 - lik2 - p2)
-    if(runif(1) < r){ # accept
-      rho.samps[i] <- rho.cand
-      Gamma <- exp(-d/rho.cand) 
-      Ginv <- solve(Gamma)
-    } else { # reject
-      rho.samps[i] <- rho.samps[i-1]
-    }
-  }
 
 }
 
