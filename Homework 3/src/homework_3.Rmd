@@ -39,8 +39,7 @@ head(rents)
 #  This model is fit without Location (used this later as a random effect)
 #  This model is also fit without Room1 because we treat a single room as the baseline
 lin_mod <- lm(RentPerM2~ Year+ NoHotWater+NoCentralHeat+ NoBathTiles+
-                SpecialBathroom + SpecialKitchen +Room2+Room3+Room4+Room5+Room6,
-              data=rents)
+                SpecialBathroom + SpecialKitchen +Room2+Room3 +Room4 +Room5+ Room6, data=rents)
 summary(lin_mod)
 
 #extract the coefficient estimates
@@ -150,6 +149,9 @@ b <- 1
 a.s2 <- 0.001; b.s2 <- 0.001
 a.t2 <- 0.001; b.t2 <- 0.001
 
+```
+
+```{r 4a, echo=FALSE, warning=FALSE,message=FALSE,eval=FALSE,include = FALSE}
 #setup and storage and starting values
 beta.samps <- matrix(NA, nrow = 12, ncol = B)
 beta.samps[,1] <- beta #coefficients from problem 1
@@ -192,6 +194,12 @@ for(i in 2:B){
 
 }
 
+save(t2.samps, s2.samps, beta.samps, eta.obs.samps, file =  "C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 3/data/mcmc_data.RData")
+
+```
+
+```{r 4b, echo=FALSE, warning=FALSE,message=FALSE, include = FALSE}
+load("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 3/data/mcmc_data.RData")
 ## Diagnostics
 
 plot(beta.samps[1,], type = "l")
@@ -210,13 +218,11 @@ acf(s2.final)
 acf(t2.final)
 acf(beta.final[1,])
 acf(eta.obs.final[1,])
-acf(rho.final)
 
 effectiveSize(s2.final)
 effectiveSize(t2.final)
 effectiveSize(beta.final[1,])
 effectiveSize(eta.obs.final[1,])
-effectiveSize(rho.final)
 
 #table with posterior means and credible intervals
 b_post_mean <- apply(beta.final, 1, mean)
@@ -245,6 +251,7 @@ sd_map <- ggplot(sp_f, aes(long, lat, group = group, fill = eta.sd)) + geom_poly
   ggtitle("Posterior Std Deviation of eta by District")+ scale_fill_gradient(low = "white", high = "black")
 
 ```
+
 
 \textbf{Full Conditionals:}
 $ \beta|Rest \sim N((X^TX)^{-1}X^T(Y-H_\eta), \sigma^2(X^TX)^{-1}) $
@@ -306,8 +313,4 @@ print(sd_map)
 ```{r appendix3, ref.label='3', eval = FALSE}
 ```
 ```{r appendix4, ref.label='4', eval = FALSE}
-```
-```{r appendix5, ref.label='5', eval = FALSE}
-```
-```{r appendix6, ref.label='6', eval = FALSE}
 ```
