@@ -7,7 +7,7 @@ output: pdf_document
 ---
 ```{r setup, include=FALSE, warning=FALSE}
 knitr::opts_chunk$set(fig.align="center")
-knitr::opts_chunk$set(fig.width=7, fig.height=3)
+knitr::opts_chunk$set(fig.width=8, fig.height=5)
 library(geoRglm)
 library(sp)
 library(gstat)
@@ -104,14 +104,14 @@ sp_f <- left_join(sp_f, districts.sp@data)
 
 #make a color or grayscale plot to illustrate this
 obs_by_dist <- ggplot(sp_f, aes(long, lat, group = group, fill = num)) + geom_polygon() + coord_equal() + 
-  labs(fill = "# of \nObservations") +
+  labs(fill = "No. of \nObservations") +
   ggtitle("Number of Observations per District")+ scale_fill_gradient(low = "white", high = "black")
 
 ```
 ## Problem 4
 \textbf{We will now create a Gibbs sampler to sample from the posterior distribution under the following Bayesian model. Let X be the matrix of covariates, including the intercept term. Let n be the number of data points in Y and m be the number of spatial locations in $\eta$.}
 Data model:
-$$ Y|\beta,\eta,\sigma^2 \sim N(X\beta + H\eta,\sigma^2I) $$
+$$ Y|\beta,\eta,\sigma^2 \sim N(X \beta + H\eta,\sigma^2I) $$
 Process model:
 $$ p(\eta|\tau^2) \propto (\tau^2)^{-(m-1)/2}\exp\{\frac{-1}{2\tau^2}\eta^T(D_w-W)\eta\} $$
 where W is the matrix of 0's and 1's indicating the neighborhood structure from problem 2, and $D_w$ is a diagonal matrix with diagonal entries $\sum_j W_{1j},...,\sum_j W_{nj}$. That is, $\eta$ follows an (improper) intrinsic autoregressive model. The $-(m-1)/2$ exponent on $\tau^2$ is due to the fact that the matrix $D_w -???? W$ has rank m-1 rather than m.
@@ -135,7 +135,8 @@ A few notes to keep in mind when constructing the sampler:
 # I will start by creating the input parameters/vectors/matrices
 n <-  nrow(rents) # number of data points in Y
 m <- nrow(districts.sp) # number of spatial locations in eta
-W <- nb2mat(neighbours = district_neighb, style = "B") #W is matrix of 0's and 1's indicating neighb structure from 2, need style = B to be binary (W is row standardized)
+W <- nb2mat(neighbours = district_neighb, style = "B")
+#W is matrix of 0's and 1's indicating neighb structure from 2, need style = B to be binary (W is row standardized)
 #X and y are given in the data file
 D <- diag(rowSums(W)) # diagonal matrix with row sums of W
 
@@ -154,7 +155,8 @@ a.t2 <- 0.001; b.t2 <- 0.001
 ```{r 4a, echo=FALSE, warning=FALSE,message=FALSE,eval=FALSE,include = FALSE}
 #setup and storage and starting values
 beta.samps <- matrix(NA, nrow = 12, ncol = B)
-beta.samps[,1] <- beta #coefficients from problem 1
+beta.samps[,1] <- beta 
+#coefficients from problem 1
 
 s2.samps <- t2.samps <- rep(NA, B)
 #eta.obs.samps <- matrix(NA, nrow = n, ncol = B)
@@ -254,14 +256,18 @@ sd_map <- ggplot(sp_f, aes(long, lat, group = group, fill = eta.sd)) + geom_poly
 
 
 \textbf{Full Conditionals:}
-$ \beta|Rest \sim N((X^TX)^{-1}X^T(Y-H_\eta), \sigma^2(X^TX)^{-1}) $
-$ \eta|Rest \sim N([H^TH/\sigma^2 + (D_w-W)/\tau^2]^{-1}H^T(Y_X\beta)/\sigma^2, [H^TH/\sigma^2 +(D_w-W)/\tau^2]^{-1}) $
-$ \sigma^2|Rest \sim InverseGamma(0.001 +n/2, 0.001 + (Y-X\beta-H\eta)^T(Y-X\beta-H\eta)/2) $
-$ \tau^2|Rest \sim InverseGamma(0.001 + (m-1)/2, 0.001 + \eta^T(D_w-W)\eta/2) $
+$$ \beta | Rest \sim N((X^TX)^{-1}X^T(Y-H_\eta), \sigma^2(X^TX)^{-1}) $$
 
-Turn in the following:
+$$ \eta|Rest \sim N([H^TH/\sigma^2 + (D_w-W)/\tau^2]^{-1}H^T(Y_X\beta)/\sigma^2, [H^TH/\sigma^2 +(D_w-W)/\tau^2]^{-1}) $$
+$$ \sigma^2|Rest \sim InverseGamma(0.001 +n/2, 0.001 + (Y-X\beta-H\eta)^T(Y-X\beta-H\eta)/2) $$
+$$ \tau^2|Rest \sim InverseGamma(0.001 + (m-1)/2, 0.001 + \eta^T(D_w-W)\eta/2) $$
+
+
+\newpage
+\textbf{Turn in the following:}
 \begin{itemize}
 \item Your map with the neighbors from problem 
+\end{itemize}
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
 
 #plot the neighborhoods
@@ -274,12 +280,16 @@ plot(district_neighb, coords, col="blue", add = TRUE)
 plot(districts.sp, main = "Map of the Districts, Parks in Red")
 plot(parks.sp,col = "red", add=TRUE)
 ```
+\begin{itemize}
 \item Your map of the apartment counts for each district
+\end{itemize}
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
 
 print(obs_by_dist)
 ```
+\begin{itemize}
 \item Trace plots and ACF plots for $\sigma^2$ and $\tau^2$
+\end{itemize}
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
 
 plot(s2.final, type = "l")
@@ -288,20 +298,24 @@ plot(t2.final, type = "l")
 acf(s2.final)
 acf(t2.final)
 ```
+\begin{itemize}
 \item A table with posterior means of the $\beta$'s and 95% credible intervals constructed using the 0.025 and 0.975 quantiles of the posterior samples
+\end{itemize}
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
 print(est_and_ci)
 ```
+\begin{itemize}
 \item A color or grayscale map of the posterior means for the vector $\eta$
+\end{itemize}
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
 print(mean_map)
 ```
+\begin{itemize}
 \item A color or grayscale map of the posterior standard deviations for the vector $\eta$
+\end{itemize}
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
 print(sd_map)
 ```
-\end{itemize}
-
 
 
 
@@ -313,4 +327,8 @@ print(sd_map)
 ```{r appendix3, ref.label='3', eval = FALSE}
 ```
 ```{r appendix4, ref.label='4', eval = FALSE}
+```
+```{r appendix4a, ref.label='4a', eval = FALSE}
+```
+```{r appendix4b, ref.label='4b', eval = FALSE}
 ```
