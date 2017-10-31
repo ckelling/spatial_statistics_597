@@ -28,22 +28,25 @@ set.seed(123)
 
 ## Problem 1: 
 \textbf{Fit a linear model relating rent per square meter to the covariates using least squares, and extract the coefficient estimates. You can ignore the Location variable for now since we will later treat this as a random effect. Also note that the room indicator variables include one that is redundant, so treat a single room as the baseline (i.e., leave Room1 out of the model, so the intercept corresponds to a single room and coefficients for the others represent adjustments to the intercept for a different number of rooms).}
-```{r 1, echo=FALSE, warning=FALSE,message=FALSE, include = FALSE}
+
+For this problem, I fit a linear model, but I do not include the intercept, because there is no intercept included in part 4 for the spatial model. As instructed, I also do not include Location or Room1 in this model. I include the estimates for the coefficients below.
+```{r 1, echo=FALSE, warning=FALSE,message=FALSE, include = TRUE}
 
 #load the data
 load("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 3/data/munichrents.RData")
 
-head(rents)
+#head(rents)
 
 #Fit a linear model relating rent per square meter to the covariates using least squares
 #  This model is fit without Location (used this later as a random effect)
 #  This model is also fit without Room1 because we treat a single room as the baseline
 lin_mod <- lm(RentPerM2~ Year+ NoHotWater+NoCentralHeat+ NoBathTiles+
                 SpecialBathroom + SpecialKitchen +Room2+Room3 +Room4 +Room5+ Room6, data=rents)
-summary(lin_mod)
+#summary(lin_mod)
 
 #extract the coefficient estimates
 beta <- lin_mod$coefficients
+beta
 
 ```
 
@@ -51,6 +54,13 @@ beta <- lin_mod$coefficients
 ## Problem 2: 
 \textbf{There are two SpatialPolygons objects associated with this dataset, districts.sp and parks.sp. The first corresponds to city districts in which apartments may be located. The second corresponds to districts with no possible apartments, such as parks or fields.
 Create an nb object with neighbors for the districts, defining neighbors as districts that share a common boundary. Make a plot showing the districts, then add the parks shaded a different color. Think about the way parks are treated; what else could we do?}
+
+First, I created an nb object with neighbors for the districts. I use the rook pattern because the problem states to define neighbors as districts that share a common boundary. The queen pattern would define neighbors as those districts which share a boundary and/or a corner. 
+
+In my first plot below, I include a plot showing the districts, with the parks added in a different color (green). In my second plot below, I also add the neighborhood structure to this first map. In the context of this assignment, we do not treat the parks as districts. In other words, these parks are ignored and treated as empty. 
+
+Alternatively, perhaps we should consider districts that both share a border with the park to also be neighbors, as they are probably close to eachother. 
+
 ```{r 2, echo=FALSE, warning=FALSE,message=FALSE, include = FALSE}
 
 plot(parks.sp)
@@ -60,8 +70,11 @@ plot(districts.sp)
 #share a common boundary.
 #queen is the option that has neigbor being at least one point shared, including corners
 #rook does not include corners, only borders
-district_neighb <- poly2nb(districts.sp, queen = FALSE)
+district_neighb <- poly2nb(districts.sp, queen = TRUE)
 
+```
+
+```{r 2b, echo=FALSE, warning=FALSE,message=FALSE, include = TRUE}
 #plot the neighborhoods
 coords <- coordinates(districts.sp)
 plot(districts.sp, main = "Districts with Neighbors")
@@ -69,15 +82,19 @@ plot(district_neighb, coords, col="blue", add = TRUE)
 
 
 #Make a plot showing the districts, then add the parks shaded a different color.
-plot(districts.sp, main = "Map of the Districts, Parks in Red")
-plot(parks.sp,col = "red", add=TRUE)
+plot(districts.sp, main = "Map of the Districts, Parks in Green")
+plot(district_neighb, coords, col="blue", add = TRUE)
+plot(parks.sp,col = "lightgreen", add=TRUE)
 
 
 ```
 
+
 ## Problem 3:
 \textbf{There are 380 districts in districts.sp, and the corresponding district numbers are indicated by the Location variable in rents. How many of the 380 districts appear in the rent dataset?
 I've included a matrix H that provides a mapping between the districts as they're ordered in districts.sp and as they appear in the rents dataframe. Use H to create a new vector containing the number of observations in each district, and make a color or grayscale plot to illustrate this. Note that inference for unobserved districts will still be possible under a hierarchical mixed effects model, since we can "borrow strength" from nearby districts that do have observations.}
+
+312 of the 380 districs appear in the rent dataset. Below, I include a map with the number of apartments in the rent dataset for each district. Once again, I include the empty districts with a red etching.
 
 ```{r 3, echo=FALSE, warning=FALSE,message=FALSE, include = FALSE}
 #How many of the 380 districts appear in the rent dataset?
@@ -96,17 +113,31 @@ num_per_dist <- as.numeric(num_per_dist)
 
 #Now I will create the data structure that I need to create a plot
 sp_f <- fortify(districts.sp)
-head(sp_f)
+#head(sp_f)
 districts.sp$id <- row.names(districts.sp)
-head(districts.sp@data, n=2)
+#head(districts.sp@data, n=2)
 districts.sp@data$num <- num_per_dist
 sp_f <- left_join(sp_f, districts.sp@data)
+parks.sp <- fortify(parks.sp)
+num <- num_per_dist
 
 #make a color or grayscale plot to illustrate this
-obs_by_dist <- ggplot(sp_f, aes(long, lat, group = group, fill = num)) + geom_polygon() + coord_equal() + 
+obs_by_dist <- ggplot(data = sp_f, aes(long, lat, group = group, fill = num)) + geom_polygon(linetype=0) + coord_equal() + 
   labs(fill = "No. of \nObservations") +
-  ggtitle("Number of Observations per District")+ scale_fill_gradient(low = "white", high = "black")
+  ggtitle("Number of Observations per District")+ scale_fill_gradient(low = "lightblue", high = "darkblue")
 
+obs_by_dist <- ggplot() + geom_polygon(data = sp_f, aes(long, lat, group = group, fill = num)) + coord_equal() +
+  labs(fill = "No. of \nObservations") +
+  ggtitle("Number of Observations per District")+ scale_fill_gradient(low = "lightblue", high = "navyblue")
+
+#final graph
+obs_graph <- obs_by_dist + geom_polygon(data=sp_f,aes(long,lat, group = group), fill = NA, col = "black")+geom_polygon(data = parks.sp, aes(parks.sp$long,parks.sp$lat,group= parks.sp$group), fill = "darkseagreen1")+geom_polygon(data=parks.sp, aes(long, lat, group = group), fill = NA, col = "black")
+
+
+```
+
+```{r, echo=FALSE, warning=FALSE,message=FALSE}
+print(obs_graph)
 ```
 ## Problem 4
 \textbf{We will now create a Gibbs sampler to sample from the posterior distribution under the following Bayesian model. Let X be the matrix of covariates, including the intercept term. Let n be the number of data points in Y and m be the number of spatial locations in $\eta$.}
@@ -163,7 +194,7 @@ s2.samps <- t2.samps <- rep(NA, B)
 s2.samps[1] <- t2.samps[1] <- 1
 
 eta.obs.samps <- matrix(NA, nrow = m, ncol = B)
-eta.obs.samps[,1] <- rep(1, m)
+eta.obs.samps[,1] <- rep(mean(y), m)
 y <- as.matrix(y)
 
 ## MCMC sampler
@@ -176,23 +207,24 @@ for(i in 2:B){
   beta.samps[,i] <- rmvnorm(1, mean= mu_b, sigma = Sig_b, method = "svd") 
    
   ## eta | Rest
-  mu_e <- solve((t(H)%*%H)/s2.samps[i-1] + (D-W)/t2.samps[i-1])%*%t(H)%*%(y-X%*%beta.samps[,i-1])/s2.samps[i-1]
+  mu_e <- solve((t(H)%*%H)/s2.samps[i-1] + (D-W)/t2.samps[i-1])%*%t(H)%*%(y-X%*%beta.samps[,i])/s2.samps[i-1]
   Sig_e <- solve(t(H)%*%H/s2.samps[i-1] + (D-W)/t2.samps[i-1])
   eta.pre <- rmvnorm(1, mean = mu_e, sigma = Sig_e, method = "svd")
   #need to adjust for the pairwise difference prior
   eta.obs.samps[,i] <- eta.pre - mean(eta.pre) 
   
+  
   ## s2 | Rest
-  a <- 0.001 + n/2
-  resid <- y-X%*%beta.samps[,i-1]
-  second_part <- H%*%as.matrix(eta.obs.samps[,i-1])
-  b <- 0.001 + t(resid-second_part)%*%(resid-second_part)/2
+  a <- 0.001 + (n/2)
+  resid <- y-X%*%beta.samps[,i]
+  second_part <- H%*%as.matrix(eta.obs.samps[,i])
+  b <- 0.001 + 0.5*(t(resid-second_part)%*%(resid-second_part))
   s2.samps[i] <- rinvgamma(1, a, b)
 
   ## t2 | Rest
-  a <- 0.001 + (m-1)/2
-  b <- 0.001 + t(as.matrix(eta.obs.samps[,i-1]))%*%(D-W)%*%as.matrix(eta.obs.samps[,i-1])/2
-  t2.samps[i] <- rinvgamma(1, a, b)
+  c <- 0.001 + ((m-1)/2)
+  d <- 0.001 + 0.5*(t(as.matrix(eta.obs.samps[,i]))%*%(D-W)%*%as.matrix(eta.obs.samps[,i]))
+  t2.samps[i] <- rinvgamma(1, c, d)
 
 }
 
@@ -209,8 +241,7 @@ plot(s2.samps, type = "l")
 plot(t2.samps, type = "l")
 plot(eta.obs.samps[1,], type = "l")
 
-
-burnin <- 1000
+burnin <- 1800
 s2.final <- s2.samps[-(1:burnin)]
 t2.final <- t2.samps[-(1:burnin)]
 beta.final <- beta.samps[,-(1:burnin)]
@@ -244,16 +275,21 @@ districts.sp@data$eta.sd <- eta.sd
 sp_f <- left_join(sp_f, districts.sp@data)
 
 
-mean_map <- ggplot(sp_f, aes(long, lat, group = group, fill = eta.m)) + geom_polygon() + coord_equal() + 
-  labs(fill = "posterior means of eta") +
-  ggtitle("Posterior Means of eta by District")+ scale_fill_gradient(low = "white", high = "black")
+m_by_dist <- ggplot() + geom_polygon(data = sp_f, aes(long, lat, group = group, fill = eta.m)) + coord_equal() +
+  labs(fill = "No. of \nObservations") +
+  ggtitle("Posterior mean of eta")+ scale_fill_gradient(low = "lightblue", high = "navyblue")
 
-sd_map <- ggplot(sp_f, aes(long, lat, group = group, fill = eta.sd)) + geom_polygon() + coord_equal() + 
-  labs(fill = "posterior sd of eta") +
-  ggtitle("Posterior Std Deviation of eta by District")+ scale_fill_gradient(low = "white", high = "black")
+#final graph
+m_map <- m_by_dist + geom_polygon(data=sp_f,aes(long,lat, group = group), fill = NA, col = "black")+geom_polygon(data = parks.sp, aes(parks.sp$long,parks.sp$lat,group= parks.sp$group), fill = "darkseagreen1")+geom_polygon(data=parks.sp, aes(long, lat, group = group), fill = NA, col = "black")
+
+sd_by_dist <- ggplot() + geom_polygon(data = sp_f, aes(long, lat, group = group, fill = eta.sd)) + coord_equal() +
+  labs(fill = "No. of \nObservations") +
+  ggtitle("Standard Dev of Post eta")+ scale_fill_gradient(low = "lightblue", high = "navyblue")
+
+#final graph
+sd_map <- sd_by_dist + geom_polygon(data=sp_f,aes(long,lat, group = group), fill = NA, col = "black")+geom_polygon(data = parks.sp, aes(parks.sp$long,parks.sp$lat,group= parks.sp$group), fill = "darkseagreen1")+geom_polygon(data=parks.sp, aes(long, lat, group = group), fill = NA, col = "black")
 
 ```
-
 
 \textbf{Full Conditionals:}
 $$ \beta | Rest \sim N((X^TX)^{-1}X^T(Y-H_\eta), \sigma^2(X^TX)^{-1}) $$
@@ -262,67 +298,36 @@ $$ \eta|Rest \sim N([H^TH/\sigma^2 + (D_w-W)/\tau^2]^{-1}H^T(Y_X\beta)/\sigma^2,
 $$ \sigma^2|Rest \sim InverseGamma(0.001 +n/2, 0.001 + (Y-X\beta-H\eta)^T(Y-X\beta-H\eta)/2) $$
 $$ \tau^2|Rest \sim InverseGamma(0.001 + (m-1)/2, 0.001 + \eta^T(D_w-W)\eta/2) $$
 
+I ran the Gibbs Sampler for the B=10,000 iterations and chose a burnin value of 1,000. After discarding the burnin, I include the trace and ACF plots for $\sigma^2$ and $\tau^2$ below. 
 
-\newpage
-\textbf{Turn in the following:}
-\begin{itemize}
-\item Your map with the neighbors from problem 
-\end{itemize}
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
 
-#plot the neighborhoods
-coords <- coordinates(districts.sp)
-plot(districts.sp, main = "Districts with Neighbors")
-plot(district_neighb, coords, col="blue", add = TRUE)
-
-
-#Make a plot showing the districts, then add the parks shaded a different color.
-plot(districts.sp, main = "Map of the Districts, Parks in Red")
-plot(parks.sp,col = "red", add=TRUE)
-```
-\begin{itemize}
-\item Your map of the apartment counts for each district
-\end{itemize}
-```{r, echo=FALSE, warning=FALSE,message=FALSE}
-
-print(obs_by_dist)
-```
-\begin{itemize}
-\item Trace plots and ACF plots for $\sigma^2$ and $\tau^2$
-\end{itemize}
-```{r, echo=FALSE, warning=FALSE,message=FALSE}
-
-plot(s2.final, type = "l")
-plot(t2.final, type = "l")
+plot.ts(s2.final, type = "l", xlab = "iteration", ylab = "value",main = "Trace Plot, sigma^2")
+plot(t2.final, type = "l", xlab = "iteration", ylab = "value",, main = "Trace Plot, tau^2")
 
 acf(s2.final)
 acf(t2.final)
 ```
-\begin{itemize}
-\item A table with posterior means of the $\beta$'s and 95% credible intervals constructed using the 0.025 and 0.975 quantiles of the posterior samples
-\end{itemize}
+Below, I also include a table with posterior means of the $\beta$'s and 95% credible intervals constructed using the 0.025 and 0.975 quantiles of the posterior samples
+
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
 print(est_and_ci)
 ```
-\begin{itemize}
-\item A color or grayscale map of the posterior means for the vector $\eta$
-\end{itemize}
+Lastly, I include a color map of the posterior means for the vector $\eta$ as well as a map for the posterior standard deviations for the vector $\eta$.
+
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
-print(mean_map)
-```
-\begin{itemize}
-\item A color or grayscale map of the posterior standard deviations for the vector $\eta$
-\end{itemize}
-```{r, echo=FALSE, warning=FALSE,message=FALSE}
+print(m_map)
 print(sd_map)
 ```
 
 
-
-
+## Appendix: R Code
+Below, I include all of the R code that has produced graphs and data.
 ```{r appendix, ref.label='1', eval = FALSE}
 ```
 ```{r appendix2, ref.label='2', eval = FALSE}
+```
+```{r appendix2b, ref.label='2b', eval = FALSE}
 ```
 ```{r appendix3, ref.label='3', eval = FALSE}
 ```
