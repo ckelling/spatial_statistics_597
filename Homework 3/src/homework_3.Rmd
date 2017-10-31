@@ -22,7 +22,7 @@ library(tmap)
 library(dplyr)
 library(MCMCpack)
 library(mvtnorm)
-set.seed(123)
+set.seed(124)
 
 ```
 
@@ -75,15 +75,17 @@ district_neighb <- poly2nb(districts.sp, queen = TRUE)
 ```
 
 ```{r 2b, echo=FALSE, warning=FALSE,message=FALSE, include = TRUE}
+par(mfrow = c(1,2))
+
 #plot the neighborhoods
 coords <- coordinates(districts.sp)
 plot(districts.sp, main = "Districts with Neighbors")
-plot(district_neighb, coords, col="blue", add = TRUE)
+plot(district_neighb, coords, col="blue", pch = 19, cex = 0.6, add = TRUE)
 
 
 #Make a plot showing the districts, then add the parks shaded a different color.
 plot(districts.sp, main = "Map of the Districts, Parks in Green")
-plot(district_neighb, coords, col="blue", add = TRUE)
+plot(district_neighb, coords, col="blue", pch = 19, cex = 0.6, add = TRUE)
 plot(parks.sp,col = "lightgreen", add=TRUE)
 
 
@@ -137,6 +139,7 @@ obs_graph <- obs_by_dist + geom_polygon(data=sp_f,aes(long,lat, group = group), 
 ```
 
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
+par(mfrow= c(1,1))
 print(obs_graph)
 ```
 ## Problem 4
@@ -233,7 +236,7 @@ save(t2.samps, s2.samps, beta.samps, eta.obs.samps, file =  "C:/Users/ckell/OneD
 ```
 
 ```{r 4b, echo=FALSE, warning=FALSE,message=FALSE, include = FALSE}
-load("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 3/data/mcmc_data.RData")
+load("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 3/data/mcmc_data2.RData")
 ## Diagnostics
 
 plot(beta.samps[1,], type = "l")
@@ -241,7 +244,7 @@ plot(s2.samps, type = "l")
 plot(t2.samps, type = "l")
 plot(eta.obs.samps[1,], type = "l")
 
-burnin <- 1800
+burnin <- 300
 s2.final <- s2.samps[-(1:burnin)]
 t2.final <- t2.samps[-(1:burnin)]
 beta.final <- beta.samps[,-(1:burnin)]
@@ -262,7 +265,9 @@ b_post_mean <- apply(beta.final, 1, mean)
 b_CI <- apply(beta.final, 1, function(x) quantile(x, probs = c(0.025, 0.975)))
 est_and_ci <- cbind(b_CI[1,], b_post_mean, b_CI[2,])
 
-colnames(est_and_ci) <- c("0.025 Quantile", "Posterior Mean", "0.975 Quantile")
+est_and_ci <- cbind(est_and_ci, beta)
+
+colnames(est_and_ci) <- c("0.025 Quantile", "Posterior Mean", "0.975 Quantile", "Initial Estimate")
 rownames(est_and_ci) <- c("b1","b2","b3","b4","b5","b6","b7","b8","b9","b10","b11","b12")
 
 ## Find pointwise posterior means and sds
@@ -298,9 +303,10 @@ $$ \eta|Rest \sim N([H^TH/\sigma^2 + (D_w-W)/\tau^2]^{-1}H^T(Y_X\beta)/\sigma^2,
 $$ \sigma^2|Rest \sim InverseGamma(0.001 +n/2, 0.001 + (Y-X\beta-H\eta)^T(Y-X\beta-H\eta)/2) $$
 $$ \tau^2|Rest \sim InverseGamma(0.001 + (m-1)/2, 0.001 + \eta^T(D_w-W)\eta/2) $$
 
-I ran the Gibbs Sampler for the B=10,000 iterations and chose a burnin value of 1,000. After discarding the burnin, I include the trace and ACF plots for $\sigma^2$ and $\tau^2$ below. 
+I ran the Gibbs Sampler for the B=10,000 iterations and chose a burnin value of 300. After discarding the burnin, I include the trace and ACF plots for $\sigma^2$ and $\tau^2$ below. 
 
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
+par(mfrow= c(2,1))
 
 plot.ts(s2.final, type = "l", xlab = "iteration", ylab = "value",main = "Trace Plot, sigma^2")
 plot(t2.final, type = "l", xlab = "iteration", ylab = "value",, main = "Trace Plot, tau^2")
@@ -308,12 +314,12 @@ plot(t2.final, type = "l", xlab = "iteration", ylab = "value",, main = "Trace Pl
 acf(s2.final)
 acf(t2.final)
 ```
-Below, I also include a table with posterior means of the $\beta$'s and 95% credible intervals constructed using the 0.025 and 0.975 quantiles of the posterior samples
+Below, I also include a table with posterior means of the $\beta$'s and 95% credible intervals constructed using the 0.025 and 0.975 quantiles of the posterior samples. We also see that the initial estimates are somewhat close to the posterior mean.
 
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
 print(est_and_ci)
 ```
-Lastly, I include a color map of the posterior means for the vector $\eta$ as well as a map for the posterior standard deviations for the vector $\eta$.
+Lastly, I include a color map of the posterior means for the vector $\eta$ as well as a map for the posterior standard deviations for the vector $\eta$. We see that the mean is highest in the center and that the standard deviation is highest near the border of the map, where there are the fewest neighbors.
 
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
 print(m_map)
