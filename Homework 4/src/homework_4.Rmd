@@ -1,0 +1,43 @@
+---
+title: "Homework 4"
+subtitle: "Stat 597a: Spatial Models"
+author: "Claire Kelling"
+date: "Due Nov 14, 2017"
+output: pdf_document
+---
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(fig.align="center")
+knitr::opts_chunk$set(fig.width=7, fig.height=3)
+library(geoRglm)
+library(sp)
+library(gstat)
+library(fields)
+library(classInt)
+library(maps)
+library(mcmcse)
+set.seed(123)
+
+```
+
+## Problem 1: 
+\textbf{}
+```{r 2, echo=FALSE, warning=FALSE,message=FALSE}
+
+
+```
+
+
+
+
+```{r appendix, ref.label='1', eval = FALSE}
+```
+```{r appendix2, ref.label='2', eval = FALSE}
+```
+```{r appendix3, ref.label='3', eval = FALSE}
+```
+```{r appendix4, ref.label='4', eval = FALSE}
+```
+```{r appendix5, ref.label='5', eval = FALSE}
+```
+```{r appendix6, ref.label='6', eval = FALSE}
+```
