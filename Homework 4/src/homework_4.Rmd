@@ -15,29 +15,107 @@ library(fields)
 library(classInt)
 library(maps)
 library(mcmcse)
+library(spatstat)
 set.seed(123)
 
 ```
 
-## Problem 1: 
-\textbf{}
+## Problem 1a: 
+\textbf{Load the data and create two ppp objects from it, one for affected and
+one for unaffected individuals. A key question is: what is the window? It
+is not available for this data. For now, take the window to be the same
+for each ppp object: use a rectangular region based on the range of x and
+y for both datasets. (Have a look at the help file for owin.)}
+```{r 1a, echo=FALSE, warning=FALSE,message=FALSE}
+#load the data
+grave_dat <- read.table("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 4/data/dental.reduced.dat", header=FALSE)
+#ignore the first column
+grave_dat <- grave_dat[,-1]
+#label the variables
+colnames(grave_dat) <- c("indicator", "x", "y")
+
+#what window to use? for now, take the window to be the same for each ppp object
+#     the window will be a rectangular region based on the range of x and y for both datasets
+window <- owin(xrange = range(grave_dat$x), yrange = range(grave_dat$y))
+
+#create ppp object- affected individuals
+aff_ppp <- as.ppp(grave_dat[which(grave_dat$indicator == 1),], W = window)
+
+#create ppp object- unaffected individuals
+unaff_ppp <- as.ppp(grave_dat[which(grave_dat$indicator == 0),], W = window)
+
+```
+
+## Problem 1b: 
+\textbf{For each dataset separately, create Monte Carlo simulation envelopes for
+the F and G functions and plot them. Clearly label your plots and turn in
+a few sentences describing any choices you made in creating the envelopes.
+Is their evidence against CSR in this dataset? If so, what type of violation
+is suggested?}
+```{r 1b, echo=FALSE, warning=FALSE,message=FALSE}
+
+
+```
+
+## Problem 1c: 
+\textbf{Now let's consider a more likely window: that these graves represent a
+complete excavation of the area in which they appear, and that area is
+irregularly shaped. Since we don't know what it is, we can choose a
+rough polygon outline to surround the points. You can create such an
+outline by plotting the locations and using the locator function; again,
+see help(owin) for the details of how to specify a polygon boundary.
+Create two new ppp objects with this new window.}
+```{r 1c, echo=FALSE, warning=FALSE,message=FALSE}
+
+
+```
+
+## Problem 1d: 
+\textbf{Repeat step (b) for the new datasets. What changes? Can you explain
+the reason for this, based on the form of the test statistics?}
+```{r 1d, echo=FALSE, warning=FALSE,message=FALSE}
+
+
+```
+
+## Problem 2: 
+\textbf{Simulate four datasets on the unit square, from a homogeneous Poisson process
+with a rate $\lambda$ of your choosing. For each one, fit a kernel estimate of the
+intensity function and plot it with the points overlaid. What do you conclude
+about interpreting the results of this estimator? In other words, what can go
+wrong if we fit a spatial point process model without checking for CSR first?}
 ```{r 2, echo=FALSE, warning=FALSE,message=FALSE}
 
 
 ```
 
 
+## Problem 3: 
+\textbf{Read through sections 15.2 and 15.3 of the notes by Adrian Baddeley about
+fitting point process models in R with the spatstat package (you can find it
+on Canvas).
+In 15.3, follow along with the R code example for the bei dataset. In particular,
+find the MLEs for inhomogeneous models with intensity functions:}
+$$ \text{Model 1: } = exp\{\beta_0 + \beta_1 Z(x)\} $$
+$$\text{Model 2: }  = \beta Z(x)$$
+
+\textbf{Plot a kernel density estimate of $\lambda(x)$, ignoring covariates, as well as the fitted intensities under the two models. Put them all on the same color scale, and include a sentence or two comparing them. Note: the data for this problem are available from the spatstat package.}
+```{r 3, echo=FALSE, warning=FALSE,message=FALSE}
 
 
-```{r appendix, ref.label='1', eval = FALSE}
 ```
-```{r appendix2, ref.label='2', eval = FALSE}
+
+
+
+```{r appendix, ref.label='1a', eval = FALSE}
 ```
-```{r appendix3, ref.label='3', eval = FALSE}
+```{r appendix2, ref.label='1b', eval = FALSE}
 ```
-```{r appendix4, ref.label='4', eval = FALSE}
+```{r appendix3, ref.label='1c', eval = FALSE}
 ```
-```{r appendix5, ref.label='5', eval = FALSE}
+```{r appendix4, ref.label='1d', eval = FALSE}
 ```
-```{r appendix6, ref.label='6', eval = FALSE}
+```{r appendix5, ref.label='2', eval = FALSE}
+```
+```{r appendix6, ref.label='3', eval = FALSE}
 ```
