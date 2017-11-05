@@ -34,15 +34,27 @@ grave_dat <- grave_dat[,-1]
 #label the variables
 colnames(grave_dat) <- c("indicator", "x", "y")
 
+#affected dataset
+aff_dat <- grave_dat[which(grave_dat$indicator == 1),]
+#unaffected dataset
+unaff_dat <- grave_dat[which(grave_dat$indicator == 0),]
+
 #what window to use? for now, take the window to be the same for each ppp object
 #     the window will be a rectangular region based on the range of x and y for both datasets
 window <- owin(xrange = range(grave_dat$x), yrange = range(grave_dat$y))
 
 #create ppp object- affected individuals
-aff_ppp <- as.ppp(grave_dat[which(grave_dat$indicator == 1),], W = window)
+aff_ppp <- as.ppp(aff_dat[,c(2:3)], W = window)
 
 #create ppp object- unaffected individuals
-unaff_ppp <- as.ppp(grave_dat[which(grave_dat$indicator == 0),], W = window)
+unaff_ppp <- as.ppp(unaff_dat[,c(2:3)], W = window)
+
+
+#what it is supposed to be like
+data(cells)
+
+E <- envelope(cells, Kest, nsim =100, nrank = 10, global = TRUE)
+plot(E)
 
 ```
 
@@ -52,8 +64,31 @@ the F and G functions and plot them. Clearly label your plots and turn in
 a few sentences describing any choices you made in creating the envelopes.
 Is their evidence against CSR in this dataset? If so, what type of violation
 is suggested?}
-```{r 1b, echo=FALSE, warning=FALSE,message=FALSE}
 
+I have included my plots below for the F and G functions for both datasets. 
+
+Choices I made in creating the envelopes:
+Evidence against CSR in the dataset: 
+What kind of violation:
+
+```{r 1b, echo=FALSE, warning=FALSE,message=FALSE}
+#creating MC sim envelope for affected dataset
+#    F function
+f_aff <- envelope(aff_ppp, fun = Fest, global = TRUE)
+plot(f_aff, main = "F function Envelope, Affected Population")
+#    G function
+g_aff <- envelope(aff_ppp, fun = Gest, global = TRUE)
+plot(g_aff, main = "G function Envelope, Affected Population")
+
+
+
+#creating MC sim envelope for unaffected dataset
+#    F function
+f_aff <- envelope(unaff_ppp, nrank = 10,fun = Fest, global = TRUE)
+plot(f_aff, main = "F function Envelope, Unaffected Population")
+#    G function
+g_aff <- envelope(unaff_ppp, fun = Gest, global = TRUE)
+plot(g_aff, main = "G function Envelope, Unaffected Population")
 
 ```
 
@@ -66,6 +101,27 @@ outline by plotting the locations and using the locator function; again,
 see help(owin) for the details of how to specify a polygon boundary.
 Create two new ppp objects with this new window.}
 ```{r 1c, echo=FALSE, warning=FALSE,message=FALSE}
+help(owin)
+help(locator)
+
+plot(w)
+ # plots edges of a box 1 unit x 2 units
+ v <- locator() 
+ # click on points in the plot window
+ # to be the vertices of a polygon 
+ # traversed in anticlockwise order 
+ u <- owin(c(0,1), c(0,2), poly=v)
+
+plot(aff_ppp)
+aff_poly <- locator()
+
+poly_window_aff <- owin(xrange = range(grave_dat$x), yrange = range(grave_dat$y), poly = aff_poly)
+
+
+plot(unaff_ppp)
+unaff_poly <- locator()
+
+poly_window_unaff <- owin(xrange = range(grave_dat$x), yrange = range(grave_dat$y), poly = umaff_poly)
 
 
 ```
@@ -74,7 +130,23 @@ Create two new ppp objects with this new window.}
 \textbf{Repeat step (b) for the new datasets. What changes? Can you explain
 the reason for this, based on the form of the test statistics?}
 ```{r 1d, echo=FALSE, warning=FALSE,message=FALSE}
+#creating MC sim envelope for affected dataset
+#    F function
+f_aff <- envelope(aff_ppp, fun = Fest, global = TRUE)
+plot(f_aff, main = "F function Envelope, Affected Population")
+#    G function
+g_aff <- envelope(aff_ppp, fun = Gest, global = TRUE)
+plot(g_aff, main = "G function Envelope, Affected Population")
 
+
+
+#creating MC sim envelope for unaffected dataset
+#    F function
+f_aff <- envelope(unaff_ppp, nrank = 10,fun = Fest, global = TRUE)
+plot(f_aff, main = "F function Envelope, Unaffected Population")
+#    G function
+g_aff <- envelope(unaff_ppp, fun = Gest, global = TRUE)
+plot(g_aff, main = "G function Envelope, Unaffected Population")
 
 ```
 
