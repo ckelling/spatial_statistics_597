@@ -21,11 +21,7 @@ set.seed(123)
 ```
 
 ## Problem 1a: 
-\textbf{Load the data and create two ppp objects from it, one for affected and
-one for unaffected individuals. A key question is: what is the window? It
-is not available for this data. For now, take the window to be the same
-for each ppp object: use a rectangular region based on the range of x and
-y for both datasets. (Have a look at the help file for owin.)}
+\textbf{Load the data and create two ppp objects from it, one for affected and one for unaffected individuals. A key question is: what is the window? It is not available for this data. For now, take the window to be the same for each ppp object: use a rectangular region based on the range of x and y for both datasets. (Have a look at the help file for owin.)}
 ```{r 1a, echo=FALSE, warning=FALSE,message=FALSE}
 #load the data
 grave_dat <- read.table("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 4/data/dental.reduced.dat", header=FALSE)
@@ -50,20 +46,16 @@ aff_ppp <- as.ppp(aff_dat[,c(2:3)], W = window)
 unaff_ppp <- as.ppp(unaff_dat[,c(2:3)], W = window)
 
 
-#what it is supposed to be like
-data(cells)
-
-E <- envelope(cells, Kest, nsim =100, nrank = 10, global = TRUE)
-plot(E)
+# #what it is supposed to be like
+# data(cells)
+# 
+# E <- envelope(cells, Kest, nsim =100, nrank = 10, global = TRUE)
+# plot(E)
 
 ```
 
 ## Problem 1b: 
-\textbf{For each dataset separately, create Monte Carlo simulation envelopes for
-the F and G functions and plot them. Clearly label your plots and turn in
-a few sentences describing any choices you made in creating the envelopes.
-Is their evidence against CSR in this dataset? If so, what type of violation
-is suggested?}
+\textbf{For each dataset separately, create Monte Carlo simulation envelopes for the F and G functions and plot them. Clearly label your plots and turn in a few sentences describing any choices you made in creating the envelopes. Is their evidence against CSR in this dataset? If so, what type of violation is suggested?}
 
 I have included my plots below for the F and G functions for both datasets. 
 
@@ -91,39 +83,41 @@ plot(g_aff, main = "G function Envelope, Unaffected Population")
 ```
 
 ## Problem 1c: 
-\textbf{Now let's consider a more likely window: that these graves represent a
-complete excavation of the area in which they appear, and that area is
-irregularly shaped. Since we don't know what it is, we can choose a
-rough polygon outline to surround the points. You can create such an
-outline by plotting the locations and using the locator function; again,
-see help(owin) for the details of how to specify a polygon boundary.
-Create two new ppp objects with this new window.}
-```{r 1c, echo=FALSE, warning=FALSE,message=FALSE}
-help(owin)
-help(locator)
+\textbf{Now let's consider a more likely window: that these graves represent a complete excavation of the area in which they appear, and that area is irregularly shaped. Since we don't know what it is, we can choose a rough polygon outline to surround the points. You can create such an outline by plotting the locations and using the locator function; again, see help(owin) for the details of how to specify a polygon boundary. Create two new ppp objects with this new window.}
+```{r 1c, echo=FALSE, warning=FALSE,message=FALSE,eval=FALSE}
+# help(owin)
+# help(locator)
 
-plot(w)
- # plots edges of a box 1 unit x 2 units
- v <- locator() 
- # click on points in the plot window
- # to be the vertices of a polygon 
- # traversed in anticlockwise order 
- u <- owin(c(0,1), c(0,2), poly=v)
+# plot(w)
+#  # plots edges of a box 1 unit x 2 units
+#  v <- locator() 
+#  # click on points in the plot window
+#  # to be the vertices of a polygon 
+#  # traversed in anticlockwise order 
+#  u <- owin(c(0,1), c(0,2), poly=v)
 
 #create polygons - affected individuals
-plot(aff_ppp)
+plot(aff_dat[,c(2,3)])
 aff_poly <- locator()
-poly_window_aff <- owin(xrange = range(grave_dat$x), yrange = range(grave_dat$y), poly = aff_poly)
+
+#create polygons - affected individuals
+plot(unaff_dat[,c(2,3)])
+unaff_poly <- locator()
+
+save(aff_poly, unaff_poly, file = "C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 4/data/polygon_dat.Rdata")
+
+```
+
+```{r 1cb, echo=FALSE, warning=FALSE,message=FALSE}
+load(file = "C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 4/data/polygon_dat.Rdata")
+
 
 #create ppp object- affected individuals
+poly_window_aff <- owin( poly = aff_poly)
 aff_ppp_poly <- as.ppp(aff_dat[,c(2:3)], W = poly_window_aff)
 
-#create polygons - affected individuals
-plot(unaff_ppp)
-unaff_poly <- locator()
-poly_window_unaff <- owin(xrange = range(grave_dat$x), yrange = range(grave_dat$y), poly = unaff_poly)
-
 #create ppp object- unaffected individuals
+poly_window_unaff <- owin(poly = unaff_poly)
 unaff_ppp_poly <- as.ppp(unaff_dat[,c(2:3)], W = poly_window_unaff)
 
 ```
@@ -131,6 +125,10 @@ unaff_ppp_poly <- as.ppp(unaff_dat[,c(2:3)], W = poly_window_unaff)
 ## Problem 1d: 
 \textbf{Repeat step (b) for the new datasets. What changes? Can you explain
 the reason for this, based on the form of the test statistics?}
+
+What changes? Can you explain
+the reason for this, based on the form of the test statistics?
+
 ```{r 1d, echo=FALSE, warning=FALSE,message=FALSE}
 #creating MC sim envelope for affected dataset
 #    F function
@@ -159,7 +157,36 @@ intensity function and plot it with the points overlaid. What do you conclude
 about interpreting the results of this estimator? In other words, what can go
 wrong if we fit a spatial point process model without checking for CSR first?}
 ```{r 2, echo=FALSE, warning=FALSE,message=FALSE}
+#homogenous Poisson Process space and rate
+x0=0;x1=1;y0=0;y1=1
+lambda0<- 300
+par(mfrow= c(1,2))
 
+for(i in 1:4){
+  #Simulating for number of events in the rectangle
+  n.event=rpois(1,lambda0)
+  
+  #calculate x and y
+  x.i=runif(n.event,min=x0,max=x1)
+  y.i=runif(n.event,min=y0,max=y1)
+  
+  dat <- cbind(x.i, y.i)
+  dat <- as.data.frame(dat)
+  
+  #Plot Homogenous Poisson Process
+  #plot(dat,xlim=c(0,1), main=expression(paste("Uniform Method on D when intensity = ", lambda[0]," = 300")))
+  
+  #what window to use? for now, take the window to be the same for each ppp object
+  #     the window will be a rectangular region of the unit square (0,1)x(0,1)
+  window <- owin(xrange = c(0,1), yrange = c(0,1))
+  
+  
+  #create ppp object- affected individuals
+  dat_ppp <- as.ppp(dat, W = window)
+  
+  plot(density.ppp(dat_ppp), main = expression(paste("Kernel estimate with Uniform \nMethod on (0,1)x(0,1) when intensity = ", lambda, " = 300")))
+  points(dat,xlim=c(0,1))
+}
 
 ```
 
