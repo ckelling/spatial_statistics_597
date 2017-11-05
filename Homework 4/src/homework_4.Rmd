@@ -80,8 +80,6 @@ plot(f_aff, main = "F function Envelope, Affected Population")
 g_aff <- envelope(aff_ppp, fun = Gest, global = TRUE)
 plot(g_aff, main = "G function Envelope, Affected Population")
 
-
-
 #creating MC sim envelope for unaffected dataset
 #    F function
 f_aff <- envelope(unaff_ppp, nrank = 10,fun = Fest, global = TRUE)
@@ -112,17 +110,21 @@ plot(w)
  # traversed in anticlockwise order 
  u <- owin(c(0,1), c(0,2), poly=v)
 
+#create polygons - affected individuals
 plot(aff_ppp)
 aff_poly <- locator()
-
 poly_window_aff <- owin(xrange = range(grave_dat$x), yrange = range(grave_dat$y), poly = aff_poly)
 
+#create ppp object- affected individuals
+aff_ppp_poly <- as.ppp(aff_dat[,c(2:3)], W = poly_window_aff)
 
+#create polygons - affected individuals
 plot(unaff_ppp)
 unaff_poly <- locator()
+poly_window_unaff <- owin(xrange = range(grave_dat$x), yrange = range(grave_dat$y), poly = unaff_poly)
 
-poly_window_unaff <- owin(xrange = range(grave_dat$x), yrange = range(grave_dat$y), poly = umaff_poly)
-
+#create ppp object- unaffected individuals
+unaff_ppp_poly <- as.ppp(unaff_dat[,c(2:3)], W = poly_window_unaff)
 
 ```
 
@@ -132,20 +134,20 @@ the reason for this, based on the form of the test statistics?}
 ```{r 1d, echo=FALSE, warning=FALSE,message=FALSE}
 #creating MC sim envelope for affected dataset
 #    F function
-f_aff <- envelope(aff_ppp, fun = Fest, global = TRUE)
+f_aff <- envelope(aff_ppp_poly, fun = Fest, global = TRUE)
 plot(f_aff, main = "F function Envelope, Affected Population")
 #    G function
-g_aff <- envelope(aff_ppp, fun = Gest, global = TRUE)
+g_aff <- envelope(aff_ppp_poly, fun = Gest, global = TRUE)
 plot(g_aff, main = "G function Envelope, Affected Population")
 
 
 
 #creating MC sim envelope for unaffected dataset
 #    F function
-f_aff <- envelope(unaff_ppp, nrank = 10,fun = Fest, global = TRUE)
+f_aff <- envelope(unaff_ppp_poly, nrank = 10,fun = Fest, global = TRUE)
 plot(f_aff, main = "F function Envelope, Unaffected Population")
 #    G function
-g_aff <- envelope(unaff_ppp, fun = Gest, global = TRUE)
+g_aff <- envelope(unaff_ppp_poly, fun = Gest, global = TRUE)
 plot(g_aff, main = "G function Envelope, Unaffected Population")
 
 ```
