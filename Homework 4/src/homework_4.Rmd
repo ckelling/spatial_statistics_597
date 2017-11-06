@@ -202,8 +202,32 @@ $$\text{Model 2: }  = \beta Z(x)$$
 
 \textbf{Plot a kernel density estimate of $\lambda(x)$, ignoring covariates, as well as the fitted intensities under the two models. Put them all on the same color scale, and include a sentence or two comparing them. Note: the data for this problem are available from the spatstat package.}
 ```{r 3, echo=FALSE, warning=FALSE,message=FALSE}
+#load the data from the spatstat package
+data(bei)
+grad <- bei.extra$grad
 
+#plot the data
+plot(grad)
 
+#fit model 1
+mod_1 <- ppm(bei, ~slope, covariates = list(slope = grad))
+mod_1
+
+#fit model 2
+mod_2 <- ppm(bei, ~offset(log(slope)), covariates = list(slope=grad))
+mod_2
+
+par(mfrow=c(1,3))
+# plot a kernel density estimate of lambda(x)
+plot(density.ppp(bei))
+
+# plot fitted intensity for model 1
+plot(mod_1, se = FALSE,ngrid= c(100,100), superimpose = FALSE)
+
+# plot fitted intensity for model 2
+plot(mod_2, se = FALSE,ngrid= c(100,100), superimpose = FALSE)
+
+#NEED TO GET THESE ON THE SAME SCALE AND COMMENT
 ```
 
 
