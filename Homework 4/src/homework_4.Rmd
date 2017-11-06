@@ -7,7 +7,7 @@ output: pdf_document
 ---
 ```{r setup, include=FALSE, warning=FALSE}
 knitr::opts_chunk$set(fig.align="center")
-knitr::opts_chunk$set(fig.width=7, fig.height=3)
+knitr::opts_chunk$set(fig.width=9, fig.height=4)
 library(geoRglm)
 library(sp)
 library(gstat)
@@ -22,7 +22,13 @@ set.seed(123)
 
 ## Problem 1a: 
 \textbf{Load the data and create two ppp objects from it, one for affected and one for unaffected individuals. A key question is: what is the window? It is not available for this data. For now, take the window to be the same for each ppp object: use a rectangular region based on the range of x and y for both datasets. (Have a look at the help file for owin.)}
+
+I created these two ppp objects, please find the code in the appendix.
 ```{r 1a, echo=FALSE, warning=FALSE,message=FALSE}
+###
+### Problem 1a
+###
+
 #load the data
 grave_dat <- read.table("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 4/data/dental.reduced.dat", header=FALSE)
 #ignore the first column
@@ -45,13 +51,6 @@ aff_ppp <- as.ppp(aff_dat[,c(2:3)], W = window)
 #create ppp object- unaffected individuals
 unaff_ppp <- as.ppp(unaff_dat[,c(2:3)], W = window)
 
-
-# #what it is supposed to be like
-# data(cells)
-# 
-# E <- envelope(cells, Kest, nsim =100, nrank = 10, global = TRUE)
-# plot(E)
-
 ```
 
 ## Problem 1b: 
@@ -59,42 +58,58 @@ unaff_ppp <- as.ppp(unaff_dat[,c(2:3)], W = window)
 
 I have included my plots below for the F and G functions for both datasets. 
 
-Choices I made in creating the envelopes:
-Evidence against CSR in the dataset: 
-What kind of violation:
+Choices I made in creating the envelopes?
 
-```{r 1b, echo=FALSE, warning=FALSE,message=FALSE}
+I don't see too much evidence against CSR in my dataset. For the most part, the observed curve lies within the simulation envelope for both that affected and the unaffected datasets, for both the F and G functions. However, for the unaffected dataset and the F curve, the observed curve is not very close to the mean simulated plot and lies outside the envelope on the right hand side of the plot.
+
+```{r 1b, echo=FALSE, warning=FALSE,message=FALSE, include = FALSE}
+###
+### Problem 1b
+###
+
+
 #creating MC sim envelope for affected dataset
 #    F function
 f_aff <- envelope(aff_ppp, fun = Fest, global = TRUE)
-plot(f_aff, main = "F function Envelope, Affected Population")
+
 #    G function
 g_aff <- envelope(aff_ppp, fun = Gest, global = TRUE)
-plot(g_aff, main = "G function Envelope, Affected Population")
+
 
 #creating MC sim envelope for unaffected dataset
 #    F function
-f_aff <- envelope(unaff_ppp, nrank = 10,fun = Fest, global = TRUE)
-plot(f_aff, main = "F function Envelope, Unaffected Population")
+f_unaff <- envelope(unaff_ppp, fun = Fest, global = TRUE)
+
 #    G function
-g_aff <- envelope(unaff_ppp, fun = Gest, global = TRUE)
-plot(g_aff, main = "G function Envelope, Unaffected Population")
+g_unaff <- envelope(unaff_ppp, fun = Gest, global = TRUE)
+
+
+```
+
+```{r 1bp, echo=FALSE, warning=FALSE,message=FALSE}
+#creating MC sim plots for affected dataset
+#    F function
+plot(f_aff, main = "F function Envelope, Affected Population")
+#    G function
+plot(g_aff, main = "G function Envelope, Affected Population")
+
+#creating MC sim plots for unaffected dataset
+#    F function
+plot(f_unaff, main = "F function Envelope, Unaffected Population")
+#    G function
+plot(g_unaff, main = "G function Envelope, Unaffected Population")
 
 ```
 
 ## Problem 1c: 
 \textbf{Now let's consider a more likely window: that these graves represent a complete excavation of the area in which they appear, and that area is irregularly shaped. Since we don't know what it is, we can choose a rough polygon outline to surround the points. You can create such an outline by plotting the locations and using the locator function; again, see help(owin) for the details of how to specify a polygon boundary. Create two new ppp objects with this new window.}
-```{r 1c, echo=FALSE, warning=FALSE,message=FALSE,eval=FALSE}
-# help(owin)
-# help(locator)
 
-# plot(w)
-#  # plots edges of a box 1 unit x 2 units
-#  v <- locator() 
-#  # click on points in the plot window
-#  # to be the vertices of a polygon 
-#  # traversed in anticlockwise order 
-#  u <- owin(c(0,1), c(0,2), poly=v)
+Again, I created these two ppp objects, please find the code in the appendix.
+
+```{r 1c, echo=FALSE, warning=FALSE,message=FALSE,eval=FALSE}
+###
+### Problem 1c
+###
 
 #create polygons - affected individuals
 plot(aff_dat[,c(2,3)])
@@ -126,27 +141,45 @@ unaff_ppp_poly <- as.ppp(unaff_dat[,c(2:3)], W = poly_window_unaff)
 \textbf{Repeat step (b) for the new datasets. What changes? Can you explain
 the reason for this, based on the form of the test statistics?}
 
-What changes? Can you explain
-the reason for this, based on the form of the test statistics?
+Now that I have changed the window to polygons, the data is showing strong evidence for complete spatial randomness. The observed line is very close to the mean simulated line, especially in the F function. 
 
-```{r 1d, echo=FALSE, warning=FALSE,message=FALSE}
+Can you explain the reason for this, based on the form of the test statistics?
+
+
+```{r 1d, echo=FALSE, warning=FALSE,message=FALSE, include = FALSE}
+###
+### Problem 1d
+###
+
 #creating MC sim envelope for affected dataset
 #    F function
-f_aff <- envelope(aff_ppp_poly, fun = Fest, global = TRUE)
-plot(f_aff, main = "F function Envelope, Affected Population")
+f_aff_2 <- envelope(aff_ppp_poly, fun = Fest, global = TRUE)
 #    G function
-g_aff <- envelope(aff_ppp_poly, fun = Gest, global = TRUE)
-plot(g_aff, main = "G function Envelope, Affected Population")
-
+g_aff_2 <- envelope(aff_ppp_poly, fun = Gest, global = TRUE)
 
 
 #creating MC sim envelope for unaffected dataset
 #    F function
-f_aff <- envelope(unaff_ppp_poly, nrank = 10,fun = Fest, global = TRUE)
-plot(f_aff, main = "F function Envelope, Unaffected Population")
+f_unaff_2 <- envelope(unaff_ppp_poly, nrank = 10,fun = Fest, global = TRUE)
 #    G function
-g_aff <- envelope(unaff_ppp_poly, fun = Gest, global = TRUE)
-plot(g_aff, main = "G function Envelope, Unaffected Population")
+g_unaff_2 <- envelope(unaff_ppp_poly, fun = Gest, global = TRUE)
+
+```
+
+```{r 1dp, echo=FALSE, warning=FALSE,message=FALSE}
+#creating MC sim plots for affected dataset
+#    F function
+plot(f_aff_2, main = "F function Envelope, Affected Population")
+#    G function
+plot(g_aff_2, main = "G function Envelope, Affected Population")
+
+
+
+#creating MC sim plots for unaffected dataset
+#    F function
+plot(f_unaff_2, main = "F function Envelope, Unaffected Population")
+#    G function
+plot(g_unaff_2, main = "G function Envelope, Unaffected Population")
 
 ```
 
@@ -156,7 +189,14 @@ with a rate $\lambda$ of your choosing. For each one, fit a kernel estimate of t
 intensity function and plot it with the points overlaid. What do you conclude
 about interpreting the results of this estimator? In other words, what can go
 wrong if we fit a spatial point process model without checking for CSR first?}
+
+A homogenous Poisson Process is an example of a CSR point process model. If we do not assess for CSR first, we may conclude that there is not complete spatial randomness when we fit models. Even though they are estimators of the same intensity, they give vastly different results in terms of the estimator.
+
 ```{r 2, echo=FALSE, warning=FALSE,message=FALSE}
+###
+### Problem 2
+###
+
 #homogenous Poisson Process space and rate
 x0=0;x1=1;y0=0;y1=1
 lambda0<- 300
@@ -201,44 +241,55 @@ $$ \text{Model 1: } = exp\{\beta_0 + \beta_1 Z(x)\} $$
 $$\text{Model 2: }  = \beta Z(x)$$
 
 \textbf{Plot a kernel density estimate of $\lambda(x)$, ignoring covariates, as well as the fitted intensities under the two models. Put them all on the same color scale, and include a sentence or two comparing them. Note: the data for this problem are available from the spatstat package.}
+
+I notice that the kernel density estimate of $\lambda(x)$ is fairly different than the fitted intensities under the two models. The two models are relatively similar, just slightly different ranges. However, they include peaks at pretty much the same set of locations.
 ```{r 3, echo=FALSE, warning=FALSE,message=FALSE}
+###
+### Problem 3
+###
+
 #load the data from the spatstat package
 data(bei)
 grad <- bei.extra$grad
 
 #plot the data
-plot(grad)
+#plot(grad)
 
 #fit model 1
 mod_1 <- ppm(bei, ~slope, covariates = list(slope = grad))
-mod_1
+#mod_1
 
 #fit model 2
 mod_2 <- ppm(bei, ~offset(log(slope)), covariates = list(slope=grad))
-mod_2
+#mod_2
 
 par(mfrow=c(1,3))
 # plot a kernel density estimate of lambda(x)
-plot(density.ppp(bei))
+plot(density.ppp(bei), main = "Kernel Density Estimate")
 
 # plot fitted intensity for model 1
-plot(mod_1, se = FALSE,ngrid= c(100,100), superimpose = FALSE)
+plot(mod_1, se = FALSE,ngrid= c(100,100), superimpose = FALSE, main = "Model 1")
 
 # plot fitted intensity for model 2
-plot(mod_2, se = FALSE,ngrid= c(100,100), superimpose = FALSE)
+plot(mod_2, se = FALSE,ngrid= c(100,100), superimpose = FALSE, main = "Model 2")
 
-#NEED TO GET THESE ON THE SAME SCALE AND COMMENT
+#NEED TO GET THESE ON THE SAME SCALE
 ```
 
 
+## Appendix: R Code
 
 ```{r appendix, ref.label='1a', eval = FALSE}
 ```
 ```{r appendix2, ref.label='1b', eval = FALSE}
 ```
+```{r appendix2b, ref.label='1bp', eval = FALSE}
+```
 ```{r appendix3, ref.label='1c', eval = FALSE}
 ```
 ```{r appendix4, ref.label='1d', eval = FALSE}
+```
+```{r appendix4b, ref.label='1dp', eval = FALSE}
 ```
 ```{r appendix5, ref.label='2', eval = FALSE}
 ```
