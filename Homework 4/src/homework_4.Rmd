@@ -58,9 +58,13 @@ unaff_ppp <- as.ppp(unaff_dat[,c(2:3)], W = window)
 
 I have included my plots below for the F and G functions for both datasets. 
 
-Choices I made in creating the envelopes?
+I have made a couple of different choices in creating the simulation envelopes. First, I have set teh global option = FALSE for these envelopes because if I set global = TRUE, I get a smoother function but a much more conservative estimate of complete spatial randomness. I will also set nrank = 1 so that I create the envelope under the highest and lowest values of the function simulations. I will also increase the number of simlations to 500 so that my results aren't impacted by a small number of simulations. 
 
-I don't see too much evidence against CSR in my dataset. For the most part, the observed curve lies within the simulation envelope for both that affected and the unaffected datasets, for both the F and G functions. However, for the unaffected dataset and the F curve, the observed curve is not very close to the mean simulated plot and lies outside the envelope on the right hand side of the plot.
+I am somewhat concerned that these bands will always be too wide with the global =TRUE (compared to global = FALSE option) so that I will always fail to reject the null hypothesis of complete spatial randomness. We see, for example, that the bands are quite wide around r=0 or a radius of 0, so that we shouldn't reject the null hypothesis of CSR if there are many points within a radius of 0. 
+
+So, after creating my plots with these decisions, I don't see too much evidence against CSR in my dataset. For the most part, the observed curve lies within the simulation envelope for both that affected and the unaffected datasets, for both the F and G functions. However, for the unaffected dataset and the F curve, the observed curve is not very close to the mean simulated plot and lies outside the envelope on the right hand side of the plot.
+
+\textbf{What type of violation is suggested?}
 
 ```{r 1b, echo=FALSE, warning=FALSE,message=FALSE, include = FALSE}
 ###
@@ -70,18 +74,18 @@ I don't see too much evidence against CSR in my dataset. For the most part, the 
 
 #creating MC sim envelope for affected dataset
 #    F function
-f_aff <- envelope(aff_ppp, fun = Fest, global = TRUE)
+f_aff <- envelope(aff_ppp, fun = Fest, global = FALSE, nrank = 1, nsim = 500)
 
 #    G function
-g_aff <- envelope(aff_ppp, fun = Gest, global = TRUE)
+g_aff <- envelope(aff_ppp, fun = Gest, global = FALSE, nrank = 1, nsim = 500)
 
 
 #creating MC sim envelope for unaffected dataset
 #    F function
-f_unaff <- envelope(unaff_ppp, fun = Fest, global = TRUE)
+f_unaff <- envelope(unaff_ppp, fun = Fest, global = FALSE, nrank = 1, nsim = 500)
 
 #    G function
-g_unaff <- envelope(unaff_ppp, fun = Gest, global = TRUE)
+g_unaff <- envelope(unaff_ppp, fun = Gest, global = FALSE, nrank = 1, nsim = 500)
 
 
 ```
@@ -138,12 +142,11 @@ unaff_ppp_poly <- as.ppp(unaff_dat[,c(2:3)], W = poly_window_unaff)
 ```
 
 ## Problem 1d: 
-\textbf{Repeat step (b) for the new datasets. What changes? Can you explain
-the reason for this, based on the form of the test statistics?}
+\textbf{Repeat step (b) for the new datasets. What changes? Can you explain the reason for this, based on the form of the test statistics?}
 
 Now that I have changed the window to polygons, the data is showing strong evidence for complete spatial randomness. The observed line is very close to the mean simulated line, especially in the F function. 
 
-Can you explain the reason for this, based on the form of the test statistics?
+\textbf{Can you explain the reason for this, based on the form of the test statistics?}
 
 
 ```{r 1d, echo=FALSE, warning=FALSE,message=FALSE, include = FALSE}
@@ -153,16 +156,16 @@ Can you explain the reason for this, based on the form of the test statistics?
 
 #creating MC sim envelope for affected dataset
 #    F function
-f_aff_2 <- envelope(aff_ppp_poly, fun = Fest, global = TRUE)
+f_aff_2 <- envelope(aff_ppp_poly, fun = Fest, global = FALSE, nrank = 1, nsim = 500)
 #    G function
-g_aff_2 <- envelope(aff_ppp_poly, fun = Gest, global = TRUE)
+g_aff_2 <- envelope(aff_ppp_poly, fun = Gest, global = FALSE, nrank = 1, nsim = 500)
 
 
 #creating MC sim envelope for unaffected dataset
 #    F function
-f_unaff_2 <- envelope(unaff_ppp_poly, nrank = 10,fun = Fest, global = TRUE)
+f_unaff_2 <- envelope(unaff_ppp_poly,fun = Fest, global = FALSE, nrank = 1, nsim = 500)
 #    G function
-g_unaff_2 <- envelope(unaff_ppp_poly, fun = Gest, global = TRUE)
+g_unaff_2 <- envelope(unaff_ppp_poly, fun = Gest, global = FALSE, nrank = 1, nsim = 500)
 
 ```
 
@@ -184,11 +187,7 @@ plot(g_unaff_2, main = "G function Envelope, Unaffected Population")
 ```
 
 ## Problem 2: 
-\textbf{Simulate four datasets on the unit square, from a homogeneous Poisson process
-with a rate $\lambda$ of your choosing. For each one, fit a kernel estimate of the
-intensity function and plot it with the points overlaid. What do you conclude
-about interpreting the results of this estimator? In other words, what can go
-wrong if we fit a spatial point process model without checking for CSR first?}
+\textbf{Simulate four datasets on the unit square, from a homogeneous Poisson process with a rate $\lambda$ of your choosing. For each one, fit a kernel estimate of the intensity function and plot it with the points overlaid. What do you conclude about interpreting the results of this estimator? In other words, what can go wrong if we fit a spatial point process model without checking for CSR first?}
 
 A homogenous Poisson Process is an example of a CSR point process model. If we do not assess for CSR first, we may conclude that there is not complete spatial randomness when we fit models. Even though they are estimators of the same intensity, they give vastly different results in terms of the estimator.
 
@@ -232,11 +231,8 @@ for(i in 1:4){
 
 
 ## Problem 3: 
-\textbf{Read through sections 15.2 and 15.3 of the notes by Adrian Baddeley about
-fitting point process models in R with the spatstat package (you can find it
-on Canvas).
-In 15.3, follow along with the R code example for the bei dataset. In particular,
-find the MLEs for inhomogeneous models with intensity functions:}
+\textbf{Read through sections 15.2 and 15.3 of the notes by Adrian Baddeley about fitting point process models in R with the spatstat package (you can find it on Canvas).
+In 15.3, follow along with the R code example for the bei dataset. In particular, find the MLEs for inhomogeneous models with intensity functions:}
 $$ \text{Model 1: } = exp\{\beta_0 + \beta_1 Z(x)\} $$
 $$\text{Model 2: }  = \beta Z(x)$$
 
