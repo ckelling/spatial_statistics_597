@@ -72,7 +72,6 @@ I will also increase the number of simlations to 400 so that my results aren't i
 
 So, after creating my plots with these decisions, I don't see too much evidence against CSR in my dataset. For the most part, the observed curve lies within the simulation envelope for both that affected and the unaffected datasets, for both the F and G functions. However, for the unaffected dataset and the F curve, the observed curve is not very close to the mean simulated plot and lies outside the envelope on the right hand side of the plot.
 
-\textbf{What type of violation is suggested?}
 
 ```{r 1b, echo=FALSE, warning=FALSE,message=FALSE, include = FALSE}
 ###
@@ -123,15 +122,15 @@ g_unaff_pnt <- envelope(unaff_ppp, fun = Gest, global = FALSE, nrank = 10, nsim 
 #creating MC sim plots for affected dataset
 par(mfrow= c(1,2))
 #    F function
-plot(f_aff_sim, main = "F function Envelope, Affected Population, Simultaneous")
+plot(f_aff_sim, main = "F function Envelope, Affected \nPopulation, Simultaneous")
 #    G function
-plot(g_aff_sim, main = "G function Envelope, Affected Population, Simultaneous")
+plot(g_aff_sim, main = "G function Envelope, Affected \nPopulation, Simultaneous")
 
 #creating MC sim plots for unaffected dataset
 #    F function
-plot(f_unaff_sim, main = "F function Envelope, Unaffected Population, Simultaneous")
+plot(f_unaff_sim, main = "F function Envelope, Unaffected \nPopulation, Simultaneous")
 #    G function
-plot(g_unaff_sim, main = "G function Envelope, Unaffected Population, Simultaneous")
+plot(g_unaff_sim, main = "G function Envelope, Unaffected \nPopulation, Simultaneous")
 
 
 ###
@@ -139,15 +138,15 @@ plot(g_unaff_sim, main = "G function Envelope, Unaffected Population, Simultaneo
 ###
 #creating MC sim plots for affected dataset
 #    F function
-plot(f_aff_pnt, main = "F function Envelope, Affected Population, Pointwise")
+plot(f_aff_pnt, main = "F function Envelope, Affected \nPopulation, Pointwise")
 #    G function
-plot(g_aff_pnt, main = "G function Envelope, Affected Population, Pointwise")
+plot(g_aff_pnt, main = "G function Envelope, Affected \nPopulation, Pointwise")
 
 #creating MC sim plots for unaffected dataset
 #    F function
-plot(f_unaff_pnt, main = "F function Envelope, Unaffected Population, Pointwise")
+plot(f_unaff_pnt, main = "F function Envelope, Unaffected \nPopulation, Pointwise")
 #    G function
-plot(g_unaff_pnt, main = "G function Envelope, Unaffected Population, Pointwise")
+plot(g_unaff_pnt, main = "G function Envelope, Unaffected \nPopulation, Pointwise")
 
 ```
 
@@ -250,15 +249,15 @@ par(mfrow= c(1,2))
 ###
 #creating MC sim plots for affected dataset
 #    F function
-plot(f_aff_sim, main = "F function Envelope, Affected Population, Simultaneous")
+plot(f_aff_sim, main = "F function Envelope, Affected \nPopulation, Simultaneous")
 #    G function
-plot(g_aff_sim, main = "G function Envelope, Affected Population, Simultaneous")
+plot(g_aff_sim, main = "G function Envelope, Affected \nPopulation, Simultaneous")
 
 #creating MC sim plots for unaffected dataset
 #    F function
-plot(f_unaff_sim, main = "F function Envelope, Unaffected Population, Simultaneous")
+plot(f_unaff_sim, main = "F function Envelope, Unaffected \nPopulation, Simultaneous")
 #    G function
-plot(g_unaff_sim, main = "G function Envelope, Unaffected Population, Simultaneous")
+plot(g_unaff_sim, main = "G function Envelope, Unaffected \nPopulation, Simultaneous")
 
 
 ###
@@ -266,15 +265,15 @@ plot(g_unaff_sim, main = "G function Envelope, Unaffected Population, Simultaneo
 ###
 #creating MC sim plots for affected dataset
 #    F function
-plot(f_aff_pnt, main = "F function Envelope, Affected Population, Pointwise")
+plot(f_aff_pnt, main = "F function Envelope, Affected \nPopulation, Pointwise")
 #    G function
-plot(g_aff_pnt, main = "G function Envelope, Affected Population, Pointwise")
+plot(g_aff_pnt, main = "G function Envelope, Affected \nPopulation, Pointwise")
 
 #creating MC sim plots for unaffected dataset
 #    F function
-plot(f_unaff_pnt, main = "F function Envelope, Unaffected Population, Pointwise")
+plot(f_unaff_pnt, main = "F function Envelope, Unaffected \nPopulation, Pointwise")
 #    G function
-plot(g_unaff_pnt, main = "G function Envelope, Unaffected Population, Pointwise")
+plot(g_unaff_pnt, main = "G function Envelope, Unaffected \nPopulation, Pointwise")
 
 ```
 
@@ -330,6 +329,8 @@ $$\text{Model 2: }  = \beta Z(x)$$
 
 \textbf{Plot a kernel density estimate of $\lambda(x)$, ignoring covariates, as well as the fitted intensities under the two models. Put them all on the same color scale, and include a sentence or two comparing them. Note: the data for this problem are available from the spatstat package.}
 
+The first plot is a kernel density estimate, using density.ppp. The second plot is the plot that is an inhomogenous poisson process with the intensity that just depends on the spatial locations.
+
 I notice that the kernel density estimate of $\lambda(x)$ is fairly different than the fitted intensities under the two models. The two models are relatively similar, just slightly different ranges. However, they include peaks at pretty much the same set of locations.
 
 We also see that the inhomogenous poisson process with intensity proportional to the slope (third plot) fits the data better than one with an intensity that is loglinear function of the slope (second plot). This is is because it better captures teh variation of the intensity estimates across space, which we can see from the difference in range in the surface plot.
@@ -346,6 +347,9 @@ grad <- bei.extra$grad
 #plot the data
 #plot(grad)
 
+#model just based off of covariates
+fit_basic <- ppm(bei, ~x+y)
+
 #fit model 1
 mod_1 <- ppm(bei, ~slope, covariates = list(slope = grad))
 #mod_1
@@ -354,9 +358,12 @@ mod_1 <- ppm(bei, ~slope, covariates = list(slope = grad))
 mod_2 <- ppm(bei, ~offset(log(slope)), covariates = list(slope=grad))
 #mod_2
 
-par(mfrow=c(1,3))
+par(mfrow=c(1,2))
 # plot a kernel density estimate of lambda(x)
 plot(density.ppp(bei), main = "Kernel Density Estimate", zlim = c(0.000,0.03))
+
+#plot model with just x and y as predictors
+plot(fit_basic, main = "Basic Inhomogenous PP, No Covariates",se= FALSE,ngrid= c(100,100), superimpose=FALSE, zlim = c(0.000,0.03))
 
 # plot fitted intensity for model 1
 plot(mod_1, se = FALSE,ngrid= c(100,100), superimpose = FALSE, main = "Model 1", zlim = c(0.000,0.03))
