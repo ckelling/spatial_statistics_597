@@ -23,7 +23,9 @@ set.seed(123)
 ## Problem 1a: 
 \textbf{Load the data and create two ppp objects from it, one for affected and one for unaffected individuals. A key question is: what is the window? It is not available for this data. For now, take the window to be the same for each ppp object: use a rectangular region based on the range of x and y for both datasets. (Have a look at the help file for owin.)}
 
-I created these two ppp objects, please find the code in the appendix.
+I loaded the data and I created a plot of the data, seen below. I include whether the observations are from the affected or unaffected indivdiuals. 
+
+I also created these two ppp objects, please find the code in the appendix.
 ```{r 1a, echo=FALSE, warning=FALSE,message=FALSE}
 ###
 ### Problem 1a
@@ -35,6 +37,10 @@ grave_dat <- read.table("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatia
 grave_dat <- grave_dat[,-1]
 #label the variables
 colnames(grave_dat) <- c("indicator", "x", "y")
+
+#I will include a plot of the data
+plot(x=grave_dat$x, y = grave_dat$y, pch=ifelse(grave_dat$indicator ==1, 19, 1), col = "black", main = "Full Data")
+legend("topleft", legend = c("Unaffected", "Affected"), pch = c(1,19), col = c("black", "black"))
 
 #affected dataset
 aff_dat <- grave_dat[which(grave_dat$indicator == 1),]
@@ -58,9 +64,11 @@ unaff_ppp <- as.ppp(unaff_dat[,c(2:3)], W = window)
 
 I have included my plots below for the F and G functions for both datasets. 
 
-I have made a couple of different choices in creating the simulation envelopes. First, I have set teh global option = FALSE for these envelopes because if I set global = TRUE, I get a smoother function but a much more conservative estimate of complete spatial randomness. I will also set nrank = 1 so that I create the envelope under the highest and lowest values of the function simulations. I will also increase the number of simlations to 500 so that my results aren't impacted by a small number of simulations. 
+I have made a couple of different choices in creating the simulation envelopes. First, I will note that I include both the global = TRUE (simultaneous envelopes) and global = FALSE (pointwise envolepes) for both the affected and the unaffected individuals. 
 
-I am somewhat concerned that these bands will always be too wide with the global =TRUE (compared to global = FALSE option) so that I will always fail to reject the null hypothesis of complete spatial randomness. We see, for example, that the bands are quite wide around r=0 or a radius of 0, so that we shouldn't reject the null hypothesis of CSR if there are many points within a radius of 0. 
+If I use the simultaneous envelopes, or set global = TRUE, I get a smoother function but a much more conservative estimate of CSR. I am somewhat concerned that these bands will always be too wide with the global =TRUE (compared to global = FALSE option) so that I will always fail to reject the null hypothesis of complete spatial randomness. We see, for example, that the bands are quite wide around r=0 or a radius of 0, so that we shouldn't reject the null hypothesis of CSR if there are many points within a radius of 0, but this may support the case that there is no CSR. Therefore, I also include the pointwise envelopes, or global = FALSE.
+
+I will also increase the number of simlations to 400 so that my results aren't impacted by a small number of simulations. I chose nrank to be different values depending on the global option, so that the 2.5\% and the 97.5\% quantiles of the simulations are displayed. We see from the help function that the significance level alpha for pointwise (global = FALSE) test is equal to 2*(nrank/(1+nsim)), so the significance level of my test is 5\%. So for global = FALSE, I will have nrank = 10. For the simultaneous option (global = TRUE), the significance level alpha for the test is equal to nrank/(1+nsim). So for this option, I will have nrank = 20.
 
 So, after creating my plots with these decisions, I don't see too much evidence against CSR in my dataset. For the most part, the observed curve lies within the simulation envelope for both that affected and the unaffected datasets, for both the F and G functions. However, for the unaffected dataset and the F curve, the observed curve is not very close to the mean simulated plot and lies outside the envelope on the right hand side of the plot.
 
@@ -71,37 +79,75 @@ So, after creating my plots with these decisions, I don't see too much evidence 
 ### Problem 1b
 ###
 
-
+### SIMULTANEOUS, global = TRUE
 #creating MC sim envelope for affected dataset
-#    F function
-f_aff <- envelope(aff_ppp, fun = Fest, global = FALSE, nrank = 1, nsim = 500)
+#    F function, simult
+f_aff_sim <- envelope(aff_ppp, fun = Fest, global = TRUE, nrank = 20, nsim = 400)
 
-#    G function
-g_aff <- envelope(aff_ppp, fun = Gest, global = FALSE, nrank = 1, nsim = 500)
+#    G function, simult
+g_aff_sim <- envelope(aff_ppp, fun = Gest, global = TRUE, nrank = 20, nsim = 400)
 
 
 #creating MC sim envelope for unaffected dataset
-#    F function
-f_unaff <- envelope(unaff_ppp, fun = Fest, global = FALSE, nrank = 1, nsim = 500)
+#    F function, simult
+f_unaff_sim <- envelope(unaff_ppp, fun = Fest, global = TRUE, nrank = 20, nsim = 400)
 
-#    G function
-g_unaff <- envelope(unaff_ppp, fun = Gest, global = FALSE, nrank = 1, nsim = 500)
+#    G function, simult
+g_unaff_sim <- envelope(unaff_ppp, fun = Gest, global = TRUE, nrank = 20, nsim = 400)
+
+
+
+### POINTWISE, global = FALSE
+#creating MC sim envelope for affected dataset
+#    F function, pointwise
+f_aff_pnt <- envelope(aff_ppp, fun = Fest, global = FALSE, nrank = 10, nsim = 400)
+
+#    G function, pointwise
+g_aff_pnt <- envelope(aff_ppp, fun = Gest, global = FALSE, nrank = 10, nsim = 400)
+
+
+#creating MC sim envelope for unaffected dataset
+#    F function, pointwise
+f_unaff_pnt <- envelope(unaff_ppp, fun = Fest, global = FALSE, nrank = 10, nsim = 400)
+
+#    G function, pointwise
+g_unaff_pnt <- envelope(unaff_ppp, fun = Gest, global = FALSE, nrank = 10, nsim = 400)
 
 
 ```
 
 ```{r 1bp, echo=FALSE, warning=FALSE,message=FALSE}
+###
+### Simultaneous 
+###
 #creating MC sim plots for affected dataset
+par(mfrow= c(1,2))
 #    F function
-plot(f_aff, main = "F function Envelope, Affected Population")
+plot(f_aff_sim, main = "F function Envelope, Affected Population, Simultaneous")
 #    G function
-plot(g_aff, main = "G function Envelope, Affected Population")
+plot(g_aff_sim, main = "G function Envelope, Affected Population, Simultaneous")
 
 #creating MC sim plots for unaffected dataset
 #    F function
-plot(f_unaff, main = "F function Envelope, Unaffected Population")
+plot(f_unaff_sim, main = "F function Envelope, Unaffected Population, Simultaneous")
 #    G function
-plot(g_unaff, main = "G function Envelope, Unaffected Population")
+plot(g_unaff_sim, main = "G function Envelope, Unaffected Population, Simultaneous")
+
+
+###
+### Pointwise 
+###
+#creating MC sim plots for affected dataset
+#    F function
+plot(f_aff_pnt, main = "F function Envelope, Affected Population, Pointwise")
+#    G function
+plot(g_aff_pnt, main = "G function Envelope, Affected Population, Pointwise")
+
+#creating MC sim plots for unaffected dataset
+#    F function
+plot(f_unaff_pnt, main = "F function Envelope, Unaffected Population, Pointwise")
+#    G function
+plot(g_unaff_pnt, main = "G function Envelope, Unaffected Population, Pointwise")
 
 ```
 
@@ -130,6 +176,12 @@ save(aff_poly, unaff_poly, file = "C:/Users/ckell/OneDrive/Penn State/2017-2018/
 ```{r 1cb, echo=FALSE, warning=FALSE,message=FALSE}
 load(file = "C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 4/data/polygon_dat.Rdata")
 
+#now, I would like to create a plot of my windows
+plot(x=grave_dat$x, y = grave_dat$y, col = ifelse(grave_dat$indicator ==1, "black", "white"), main = "Affected Individuals: New Window")
+lines(x= aff_poly$x, y = aff_poly$y)
+
+plot(x=grave_dat$x, y = grave_dat$y, col = ifelse(grave_dat$indicator ==0, "black", "white"), main = "Unaffected Individuals: New Window")
+lines(x= unaff_poly$x, y = unaff_poly$y)
 
 #create ppp object- affected individuals
 poly_window_aff <- owin( poly = aff_poly)
@@ -144,52 +196,92 @@ unaff_ppp_poly <- as.ppp(unaff_dat[,c(2:3)], W = poly_window_unaff)
 ## Problem 1d: 
 \textbf{Repeat step (b) for the new datasets. What changes? Can you explain the reason for this, based on the form of the test statistics?}
 
-Now that I have changed the window to polygons, the data is showing strong evidence for complete spatial randomness. The observed line is very close to the mean simulated line, especially in the F function. 
+Again, I include the plots for both pointwise and simultaneous for the global option, just as in part b, with the same rank and nsim decisions.
 
-\textbf{Can you explain the reason for this, based on the form of the test statistics?}
+Now that I have changed the window to polygons, the data is showing strong evidence for complete spatial randomness. The observed line is very close to the mean simulated line, especially in the F function. This is true for both the afffected and unaffected individuals.
 
+I can see somewhat of the reason for this because of the test statistics. In part d, there is no evidence against complete spatial randomness, but in part b, the empiricaly F and G functions suggest repulsion among the points, which we can see from the F and G functions as we increase the radius r. 
 
 ```{r 1d, echo=FALSE, warning=FALSE,message=FALSE, include = FALSE}
 ###
 ### Problem 1d
 ###
 
+### SIMULTANEOUS, global = TRUE
 #creating MC sim envelope for affected dataset
-#    F function
-f_aff_2 <- envelope(aff_ppp_poly, fun = Fest, global = FALSE, nrank = 1, nsim = 500)
-#    G function
-g_aff_2 <- envelope(aff_ppp_poly, fun = Gest, global = FALSE, nrank = 1, nsim = 500)
+#    F function, simult
+f_aff_sim <- envelope(aff_ppp_poly, fun = Fest, global = TRUE, nrank = 20, nsim = 400)
+
+#    G function, simult
+g_aff_sim <- envelope(aff_ppp_poly, fun = Gest, global = TRUE, nrank = 20, nsim = 400)
 
 
 #creating MC sim envelope for unaffected dataset
-#    F function
-f_unaff_2 <- envelope(unaff_ppp_poly,fun = Fest, global = FALSE, nrank = 1, nsim = 500)
-#    G function
-g_unaff_2 <- envelope(unaff_ppp_poly, fun = Gest, global = FALSE, nrank = 1, nsim = 500)
+#    F function, simult
+f_unaff_sim <- envelope(unaff_ppp_poly, fun = Fest, global = TRUE, nrank = 20, nsim = 400)
+
+#    G function, simult
+g_unaff_sim <- envelope(unaff_ppp_poly, fun = Gest, global = TRUE, nrank = 20, nsim = 400)
+
+
+
+### POINTWISE, global = FALSE
+#creating MC sim envelope for affected dataset
+#    F function, pointwise
+f_aff_pnt <- envelope(aff_ppp_poly, fun = Fest, global = FALSE, nrank = 10, nsim = 400)
+
+#    G function, pointwise
+g_aff_pnt <- envelope(aff_ppp_poly, fun = Gest, global = FALSE, nrank = 10, nsim = 400)
+
+
+#creating MC sim envelope for unaffected dataset
+#    F function, pointwise
+f_unaff_pnt <- envelope(unaff_ppp_poly, fun = Fest, global = FALSE, nrank = 10, nsim = 400)
+
+#    G function, pointwise
+g_unaff_pnt <- envelope(unaff_ppp_poly, fun = Gest, global = FALSE, nrank = 10, nsim = 400)
 
 ```
 
 ```{r 1dp, echo=FALSE, warning=FALSE,message=FALSE}
+par(mfrow= c(1,2))
+###
+### Simultaneous 
+###
 #creating MC sim plots for affected dataset
 #    F function
-plot(f_aff_2, main = "F function Envelope, Affected Population")
+plot(f_aff_sim, main = "F function Envelope, Affected Population, Simultaneous")
 #    G function
-plot(g_aff_2, main = "G function Envelope, Affected Population")
-
-
+plot(g_aff_sim, main = "G function Envelope, Affected Population, Simultaneous")
 
 #creating MC sim plots for unaffected dataset
 #    F function
-plot(f_unaff_2, main = "F function Envelope, Unaffected Population")
+plot(f_unaff_sim, main = "F function Envelope, Unaffected Population, Simultaneous")
 #    G function
-plot(g_unaff_2, main = "G function Envelope, Unaffected Population")
+plot(g_unaff_sim, main = "G function Envelope, Unaffected Population, Simultaneous")
+
+
+###
+### Pointwise 
+###
+#creating MC sim plots for affected dataset
+#    F function
+plot(f_aff_pnt, main = "F function Envelope, Affected Population, Pointwise")
+#    G function
+plot(g_aff_pnt, main = "G function Envelope, Affected Population, Pointwise")
+
+#creating MC sim plots for unaffected dataset
+#    F function
+plot(f_unaff_pnt, main = "F function Envelope, Unaffected Population, Pointwise")
+#    G function
+plot(g_unaff_pnt, main = "G function Envelope, Unaffected Population, Pointwise")
 
 ```
 
 ## Problem 2: 
 \textbf{Simulate four datasets on the unit square, from a homogeneous Poisson process with a rate $\lambda$ of your choosing. For each one, fit a kernel estimate of the intensity function and plot it with the points overlaid. What do you conclude about interpreting the results of this estimator? In other words, what can go wrong if we fit a spatial point process model without checking for CSR first?}
 
-A homogenous Poisson Process is an example of a CSR point process model. If we do not assess for CSR first, we may conclude that there is not complete spatial randomness when we fit models. Even though they are estimators of the same intensity, they give vastly different results in terms of the estimator.
+A homogenous Poisson Process is an example of a CSR point process model. If we do not assess for CSR first, we may conclude that there is not complete spatial randomness when we fit models. Even though they are estimators of the same intensity, they give vastly different results in terms of the estimator. In this case, the kernel density estimates suggest that the data comes from an inhomogenous poisson process, which is not true.
 
 ```{r 2, echo=FALSE, warning=FALSE,message=FALSE}
 ###
@@ -239,6 +331,9 @@ $$\text{Model 2: }  = \beta Z(x)$$
 \textbf{Plot a kernel density estimate of $\lambda(x)$, ignoring covariates, as well as the fitted intensities under the two models. Put them all on the same color scale, and include a sentence or two comparing them. Note: the data for this problem are available from the spatstat package.}
 
 I notice that the kernel density estimate of $\lambda(x)$ is fairly different than the fitted intensities under the two models. The two models are relatively similar, just slightly different ranges. However, they include peaks at pretty much the same set of locations.
+
+We also see that the inhomogenous poisson process with intensity proportional to the slope (third plot) fits the data better than one with an intensity that is loglinear function of the slope (second plot). This is is because it better captures teh variation of the intensity estimates across space, which we can see from the difference in range in the surface plot.
+
 ```{r 3, echo=FALSE, warning=FALSE,message=FALSE}
 ###
 ### Problem 3
