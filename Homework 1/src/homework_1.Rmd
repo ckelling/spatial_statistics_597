@@ -130,7 +130,7 @@ library(fields)
 library(classInt)
 library(maps)
 
-load("C:/Users/ckell/OneDrive/Penn State/2017-2018/597/spatial_statistics_597/Homework 1/data/CAtemps.RData")
+load("C:/Users/ckell/OneDrive/Penn State/2017-2018/Fall/597/spatial_statistics_597/Homework 1/data/CAtemps.RData")
 
 ploteqc <- function(spobj, z, breaks, ...){
   pal <- tim.colors(length(breaks)-1)
@@ -202,7 +202,7 @@ Below, we see that the points on the plot represent the nonparametric variogram 
 ##  Nonparametric estimation of the variogram
 vg <- variogram(resid ~ 1, data = CAtemp)#, width=75)
 print(vg)
-#plot(vg, xlab = "Distance", ylab = "Nonparametric Semi-variogram estimate", width=5)
+plot(vg, xlab = "Distance", ylab = "Nonparametric Semi-variogram estimate", width=5)
 
 ##  Fitting the variogram parametrically
 fitvg <- fit.variogram(vg, vgm(1, "Exp", range=200, nugget=1), fit.method = 2)
